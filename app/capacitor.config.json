@@ -1,0 +1,7 @@
+{
+  "appId": "com.purchaseplanner.app",
+  "appName": "Purchase Planner",
+  "webDir": "www",
+  "backgroundColor": "#f1f6f7",
+  "android": { "allowMixedContent": false }
+}

@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Purchase Planner</title>
+  <meta name="description" content="Plan the construction materials you need, record purchases per supplier, and see where the money goes.">
+  <meta name="theme-color" content="#0f7c8c">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Outfit:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header class="appbar">
+    <div class="brand"><span class="mark" aria-hidden="true">🏗️</span><h1>Purchase Planner</h1></div>
+    <nav class="tabs" id="tabs" aria-label="Sections">
+      <button type="button" data-tab="board" aria-selected="true"><span aria-hidden="true">🗂️</span><span class="t">Board</span></button>
+      <button type="button" data-tab="reports" aria-selected="false"><span aria-hidden="true">📊</span><span class="t">Reports</span></button>
+      <button type="button" data-tab="budget" aria-selected="false"><span aria-hidden="true">🎯</span><span class="t">Budget</span></button>
+      <button type="button" data-tab="settings" aria-selected="false"><span aria-hidden="true">⚙️</span><span class="t">Settings</span></button>
+    </nav>
+    <button class="btn small ghost" id="signBtn" type="button" hidden>Sign in</button>
+  </header>
+
+  <main class="wide">
+    <!-- BOARD: "To purchase" cards on the left, "Purchased" cards on the right.
+         Inside every card: what is needed (left) and the purchase items per supplier (right). -->
+    <section class="tab" id="tab-board">
+      <div class="funds-bar" id="fundsBar" aria-label="Remaining balances"></div>
+      <div class="toolbar">
+        <input id="q" type="search" placeholder="Search item, project or supplier…" aria-label="Search">
+        <select id="fCat" aria-label="Filter by category"></select>
+        <select id="fDate" aria-label="Show data from">
+          <option value="today">Today</option>
+          <option value="yesterday">Yesterday</option>
+          <option value="7">Last 7 days</option>
+          <option value="month">This month</option>
+          <option value="all" selected>📅 All dates</option>
+          <option value="range">Pick a date range…</option>
+        </select>
+        <span class="daterange" id="dateRange" hidden>
+          <label>From <input type="date" id="dFrom" aria-label="From date"></label>
+          <label>To <input type="date" id="dTo" aria-label="To date"></label>
+        </span>
+        <select id="fSort" aria-label="Sort cards">
+          <option value="priority">Sort: Priority</option>
+          <option value="needed">Sort: Needed by</option>
+          <option value="price">Sort: Amount (high first)</option>
+          <option value="newest">Sort: Newest</option>
+        </select>
+        <button class="btn refresh-btn" type="button" data-refresh title="Reload the latest data"><span class="ri" aria-hidden="true">🔄</span><span class="rt">Refresh</span></button>
+        <button class="btn primary" id="addBtn" type="button">+ Add item to purchase</button>
+        <button class="btn bulk" id="bulkItemsBtn" type="button" title="Add many items at once. You can paste rows from Excel.">＋ Add many items</button>
+        <button class="btn bulk" id="bulkBuyBtn" type="button" title="Record one supplier's purchases for many items at once">🧾 Record purchases</button>
+      </div>
+      <div class="pane-switch" id="paneSwitch" role="group" aria-label="Show">
+        <button type="button" data-pane="todo" aria-pressed="true">To purchase <b id="cntTodo">0</b></button>
+        <button type="button" data-pane="bought" aria-pressed="false">Purchased <b id="cntBought">0</b></button>
+      </div>
+      <div class="board" id="board" data-pane="todo">
+        <section class="col todo" aria-labelledby="hTodo">
+          <header class="col-head"><h2 id="hTodo">🛒 To purchase</h2><p id="sumTodo"></p></header>
+          <div class="cards" id="listTodo" data-drop="todo"></div>
+        </section>
+        <section class="col bought" aria-labelledby="hBought">
+          <header class="col-head"><h2 id="hBought">✅ Purchased</h2><p id="sumBought"></p></header>
+          <div class="cards" id="listBought" data-drop="bought"></div>
+        </section>
+      </div>
+    </section>
+
+    <section class="tab" id="tab-reports" hidden>
+      <div class="refreshbar"><button class="btn refresh-btn" type="button" data-refresh title="Reload the latest data"><span class="ri" aria-hidden="true">🔄</span><span class="rt">Refresh</span></button><small class="muted" data-updated></small></div>
+      <div id="reportsRoot"></div></section>
+    <section class="tab" id="tab-budget" hidden>
+      <div class="refreshbar"><button class="btn refresh-btn" type="button" data-refresh title="Reload the latest data"><span class="ri" aria-hidden="true">🔄</span><span class="rt">Refresh</span></button><small class="muted" data-updated></small></div>
+      <div id="budgetRoot"></div></section>
+    <section class="tab" id="tab-settings" hidden><div id="settingsRoot"></div></section>
+  </main>
+
+  <!-- Add / edit what is needed -->
+  <dialog id="itemDialog" aria-labelledby="itemTitle">
+    <form id="itemForm" method="dialog" novalidate>
+      <h3 id="itemTitle">Add item to purchase</h3>
+      <input type="hidden" name="id">
+      <label>Item / material<input name="name" maxlength="80" placeholder="Portland cement 40kg" autocomplete="off"></label>
+      <div class="row2">
+        <label>Category<select name="category"></select></label>
+        <label>Project / area<input name="project" list="projectList" maxlength="50" placeholder="Optional" autocomplete="off"></label>
+      </div>
+      <div class="row2">
+        <label>Quantity needed<input name="qty" type="number" min="0" step="any" inputmode="decimal" value="1"></label>
+        <label>Unit<input name="unit" list="unitList" maxlength="16" value="pcs" autocomplete="off"></label>
+      </div>
+      <div class="row2">
+        <label>Budget price (each)<input name="est" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Optional"></label>
+        <label>Priority<select name="priority"><option value="high">High</option><option value="medium" selected>Medium</option><option value="low">Low</option></select></label>
+      </div>
+      <label>Needed by<input name="needed" type="date"></label>
+      <label>Notes<textarea name="notes" rows="2" maxlength="200" placeholder="Size, brand, delivery notes (optional)"></textarea></label>
+      <datalist id="projectList"></datalist>
+      <datalist id="unitList">
+        <option value="pcs"><option value="bags"><option value="sheets"><option value="rolls"><option value="lengths"><option value="sets"><option value="boxes">
+        <option value="pails"><option value="gallons"><option value="liters"><option value="kg"><option value="m"><option value="sq.m"><option value="cu.m"><option value="lot">
+      </datalist>
+      <p class="form-error" id="itemError" role="alert"></p>
+      <div class="dialog-actions">
+        <button class="btn" type="button" data-close>Cancel</button>
+        <button class="btn primary" type="submit" id="itemSave">Save item</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Add / edit one purchase (one supplier, one quantity, one price) -->
+  <dialog id="buyDialog" aria-labelledby="buyTitle">
+    <form id="buyForm" method="dialog" novalidate>
+      <h3 id="buyTitle">Add purchase</h3>
+      <p class="hint" id="buyName"></p>
+      <label>Supplier<input name="supplier" list="supplierList" maxlength="60" placeholder="Who did you buy from?" autocomplete="off"></label>
+      <div class="row2">
+        <label>Quantity bought<input name="qty" type="number" min="0" step="any" inputmode="decimal"></label>
+        <label>Price (each)<input name="price" type="number" min="0" step="0.01" inputmode="decimal"></label>
+      </div>
+      <div class="row2">
+        <label>Date bought<input name="date" type="date"></label>
+        <label>Receipt / DR no.<input name="ref" maxlength="30" placeholder="Optional" autocomplete="off"></label>
+      </div>
+      <label>Paid from<select name="source">
+        <option value="">Choose…</option><option value="coh">Cash on hand (COH)</option><option value="bank">Bank</option><option value="split">Split between COH and BANK</option></select></label>
+      <div class="row2" id="splitRow" hidden>
+        <label>From COH (amount)<input name="cohAmt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="How much from COH"></label>
+        <label>From BANK (amount)<input name="bankAmt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="How much from BANK"></label>
+      </div>
+      <datalist id="supplierList"></datalist>
+      <p class="hint total-line" id="buyTotal"></p>
+      <p class="form-error" id="buyError" role="alert"></p>
+      <div class="dialog-actions">
+        <button class="btn" type="button" data-close>Cancel</button>
+        <button class="btn good" type="submit" id="buySave">Save purchase</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Add MANY items at once (Excel-style table, paste from Excel) -->
+  <dialog id="bulkItemDialog" class="wide" data-sticky aria-labelledby="biTitle">
+    <form id="bulkItemForm" method="dialog" novalidate>
+      <h3 id="biTitle">Add many items</h3>
+      <p class="hint">Type in the table and press <b>Enter</b> for the next row, or copy rows from Excel and paste them into the first cell. Columns are the same as your Excel: <b>Qty, Unit, Item, Budget each</b> (and optionally <b>Category</b>). Every row has its own category.</p>
+      <div class="row4">
+        <label>Default category<select name="category"></select></label>
+        <label>Project / area (for all)<input name="project" list="projectList" maxlength="50" placeholder="Optional" autocomplete="off"></label>
+        <label>Priority (for all)<select name="priority"><option value="high">High</option><option value="medium" selected>Medium</option><option value="low">Low</option></select></label>
+        <label>Needed by (for all)<input name="needed" type="date"></label>
+      </div>
+      <details id="biQuickBox" class="quick">
+        <summary>Paste or type a list instead</summary>
+        <p class="hint">One item per line, like <i>12 m Stranded Wire THHN 14mm</i> or <i>2 pcs Solderless 150mm @ 652</i> (quantity, unit, item, and optional price after @).</p>
+        <textarea id="biQuick" rows="5" placeholder="12 m Stranded Wire THHN 14mm (Red) @ 198.50&#10;2 pcs Straight Connector 1 1/4&#10;1 pc Hole sole 1 1/4"></textarea>
+        <button class="btn small" type="button" id="biQuickGo">Fill the table ↓</button>
+      </details>
+      <div class="bscroll">
+        <div class="bhead"><span></span><span>Qty</span><span>Unit</span><span>Item / material</span><span>Budget each</span><span>Category</span><span></span></div>
+        <div class="bgrid" id="biGrid"></div>
+      </div>
+      <div class="grid-tools"><button class="btn small" type="button" id="biMore">+ 5 more rows</button><button class="btn small" type="button" id="biApplyCat" title="Give every row the default category, then change the ones that differ">Set all rows to the default category</button><span class="hint" id="biNote"></span></div>
+      <p class="form-error" id="biError" role="alert"></p>
+      <div class="dialog-actions">
+        <button class="btn" type="button" id="biCancel">Cancel</button>
+        <button class="btn primary" type="submit" id="biSave">Add items</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Record purchases for MANY items at once (one supplier, one receipt) -->
+  <dialog id="bulkBuyDialog" class="wide" data-sticky aria-labelledby="bpTitle">
+    <form id="bulkBuyForm" method="dialog" novalidate>
+      <h3 id="bpTitle">Record purchases</h3>
+      <p class="hint">One supplier, one receipt, many items. Type the <b>price each</b> for every item you bought (the quantity fills in for you), or copy a price column from Excel and paste it into the first price box. Items with no price are skipped.</p>
+      <div class="row4">
+        <label>Supplier<input name="supplier" list="supplierList" maxlength="60" placeholder="Who did you buy from?" autocomplete="off"></label>
+        <label>Date bought<input name="date" type="date"></label>
+        <label>Receipt / DR no.<input name="ref" maxlength="30" placeholder="Optional" autocomplete="off"></label>
+        <label>Paid from<select name="source">
+          <option value="">Choose…</option><option value="coh">Cash on hand (COH)</option><option value="bank">Bank</option><option value="split">Split between COH and BANK</option></select></label>
+      </div>
+      <div class="row2" id="bpSplit" hidden>
+        <label>From COH (amount)<input name="cohAmt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="How much from COH"></label>
+        <label>From BANK (amount)<input name="bankAmt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="How much from BANK"></label>
+      </div>
+      <input id="bpFilter" type="search" placeholder="Filter the items below…" aria-label="Filter items">
+      <div class="bscroll">
+        <div class="phead"><span></span><span>Item</span><span>Qty bought</span><span>Price each</span><span class="r">Amount</span></div>
+        <div class="bgrid" id="bpList"></div>
+      </div>
+      <p class="grand" id="bpTotal"></p>
+      <p class="form-error" id="bpError" role="alert"></p>
+      <div class="dialog-actions">
+        <button class="btn" type="button" id="bpCancel">Cancel</button>
+        <button class="btn good" type="submit" id="bpSave">Record purchases</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Add MANY purchases to ONE item (several suppliers) -->
+  <dialog id="manyBuyDialog" class="wide" data-sticky aria-labelledby="mbTitle">
+    <form id="manyBuyForm" method="dialog" novalidate>
+      <h3 id="mbTitle">Add many purchases</h3>
+      <p class="hint" id="mbName"></p>
+      <p class="hint">One row for each supplier you bought this item from. Press <b>Enter</b> for the next row, or paste rows from Excel (Supplier, Qty, Price each, Receipt no.).</p>
+      <div class="row2">
+        <label>Date bought<input name="date" type="date"></label>
+        <label>Paid from<select name="source"><option value="">Choose…</option><option value="coh">Cash on hand (COH)</option><option value="bank">Bank</option></select></label>
+      </div>
+      <div class="bscroll">
+        <div class="mhead"><span></span><span>Supplier</span><span>Qty bought</span><span>Price each</span><span>Receipt / DR no.</span><span class="r">Amount</span><span></span></div>
+        <div class="bgrid" id="mbGrid"></div>
+      </div>
+      <div class="grid-tools"><button class="btn small" type="button" id="mbMore">+ 3 more rows</button><span class="hint">To split one purchase between COH and BANK, use <b>+ Add purchase</b> on the card.</span></div>
+      <p class="grand" id="mbTotal"></p>
+      <p class="form-error" id="mbError" role="alert"></p>
+      <div class="dialog-actions">
+        <button class="btn" type="button" id="mbCancel">Cancel</button>
+        <button class="btn good" type="submit" id="mbSave">Save purchases</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Are you sure? -->
+  <dialog id="confirmDialog" aria-labelledby="confirmTitle">
+    <form method="dialog">
+      <h3 id="confirmTitle">Are you sure?</h3>
+      <p class="hint" id="confirmText"></p>
+      <div class="dialog-actions">
+        <button class="btn" type="button" data-close id="confirmCancel">Keep it</button>
+        <button class="btn danger" type="submit" value="ok" id="confirmOk">Delete</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Sign in (only when the list is shared through a Google Sheet) -->
+  <dialog id="loginDialog" aria-labelledby="loginTitle">
+    <form id="loginForm" method="dialog" novalidate>
+      <h3 id="loginTitle">Sign in to edit</h3>
+      <p class="hint">Type the shared password to add or change items.</p>
+      <label>Password<input type="password" name="password" autocomplete="current-password"></label>
+      <p class="form-error" id="loginError" role="alert"></p>
+      <div class="dialog-actions">
+        <button class="btn" type="button" data-close>Cancel</button>
+        <button class="btn primary" type="submit" id="loginGo">Sign in</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="js/config.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/board.js"></script>
+  <script src="js/bulk.js"></script>
+  <script src="js/insights.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
