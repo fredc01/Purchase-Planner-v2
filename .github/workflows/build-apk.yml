@@ -38,6 +38,7 @@ jobs:
       - name: Build the APK
         working-directory: app/android
         run: |
+          sed -i 's/\r$//' gradlew
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
 
