@@ -56,7 +56,7 @@
       <input data-col="2" placeholder="Item / material" aria-label="Item" maxlength="80" autocomplete="off">
       <input data-col="3" inputmode="decimal" placeholder="Budget each" aria-label="Budget price each" autocomplete="off">
       <select data-col="4" aria-label="Category">${catOpts}</select>
-      <button class="icon-btn sm" type="button" data-del aria-label="Remove this row">✕</button>`;
+      <button class="icon-btn sm" type="button" data-del aria-label="Remove this row"><svg class="ti" aria-hidden="true"><use href="#ti-x"/></svg></button>`;
     COLS.forEach((k, c) => { cell(r, c).value = c === 4 ? (v.category ?? fv("category").value) : (v[k] ?? ""); });
     grid.appendChild(r); return r;
   }
@@ -88,7 +88,7 @@
     if (!(await PP.gate())) return;
     bif.reset(); PP.clearAll(bif); $("#biError").textContent = ""; $("#biQuick").value = "";
     const cats = PP.state.settings.categories;
-    catOpts = cats.map(c => `<option value="${esc(c.name)}">${esc(c.icon)} ${esc(c.name)}</option>`).join("");
+    catOpts = cats.map(c => `<option value="${esc(c.name)}">${esc(c.name)}</option>`).join("");
     fv("category").innerHTML = catOpts;
     fv("category").value = cats.some(c => c.name === last.category) ? last.category : cats[0].name;
     fv("project").value = last.project; fv("priority").value = last.priority;
@@ -308,7 +308,7 @@
       <input data-mc="2" inputmode="decimal" placeholder="${mItem.est > 0 ? esc(String(mItem.est)) : "Price each"}" aria-label="Price each" autocomplete="off">
       <input data-mc="3" placeholder="Receipt / DR no." aria-label="Receipt or DR number" maxlength="30" autocomplete="off">
       <span class="p-amt">–</span>
-      <button class="icon-btn sm" type="button" data-del aria-label="Remove this row">✕</button>`;
+      <button class="icon-btn sm" type="button" data-del aria-label="Remove this row"><svg class="ti" aria-hidden="true"><use href="#ti-x"/></svg></button>`;
     mgrid.appendChild(r); return r;
   }
   function mUpdate() {

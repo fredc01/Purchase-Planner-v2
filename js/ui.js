@@ -15,7 +15,7 @@ const PP = { state: null, tab: "board" };
   };
   const PALETTE = ["#0f7c8c", "#e0892b", "#7a5cc7", "#d9486b", "#2f9e6e", "#3b82c4", "#b98a1e", "#6b7a86"];
   PP.catColor = (name) => { let h = 0; for (const ch of String(name)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return PALETTE[h % PALETTE.length]; };
-  PP.catOf = (name) => (PP.state.settings.categories.find(c => c.name === name)) || { name, icon: "🏷️", limit: 0 };
+  PP.catOf = (name) => (PP.state.settings.categories.find(c => c.name === name)) || { name, icon: "tag", limit: 0 };
 
   /* ---- one "item" = something the site needs. It holds the quantity needed (left side of the card)
          and a list of purchases (right side): each purchase = supplier, quantity, price each, date, receipt no. ---- */

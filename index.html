@@ -16,12 +16,12 @@
 </head>
 <body>
   <header class="appbar">
-    <div class="brand"><span class="mark" aria-hidden="true">🏗️</span><h1>Purchase Planner</h1></div>
+    <div class="brand"><span class="mark" aria-hidden="true"><svg class="ti" aria-hidden="true"><use href="#ti-building-skyscraper"/></svg></span><h1>Purchase Planner</h1></div>
     <nav class="tabs" id="tabs" aria-label="Sections">
-      <button type="button" data-tab="board" aria-selected="true"><span aria-hidden="true">🗂️</span><span class="t">Board</span></button>
-      <button type="button" data-tab="reports" aria-selected="false"><span aria-hidden="true">📊</span><span class="t">Reports</span></button>
-      <button type="button" data-tab="budget" aria-selected="false"><span aria-hidden="true">🎯</span><span class="t">Budget</span></button>
-      <button type="button" data-tab="settings" aria-selected="false"><span aria-hidden="true">⚙️</span><span class="t">Settings</span></button>
+      <button type="button" data-tab="board" aria-selected="true"><span aria-hidden="true"><svg class="ti" aria-hidden="true"><use href="#ti-layout-dashboard"/></svg></span><span class="t">Board</span></button>
+      <button type="button" data-tab="reports" aria-selected="false"><span aria-hidden="true"><svg class="ti" aria-hidden="true"><use href="#ti-chart-bar"/></svg></span><span class="t">Reports</span></button>
+      <button type="button" data-tab="budget" aria-selected="false"><span aria-hidden="true"><svg class="ti" aria-hidden="true"><use href="#ti-target"/></svg></span><span class="t">Budget</span></button>
+      <button type="button" data-tab="settings" aria-selected="false"><span aria-hidden="true"><svg class="ti" aria-hidden="true"><use href="#ti-settings"/></svg></span><span class="t">Settings</span></button>
     </nav>
     <button class="btn small ghost" id="signBtn" type="button" hidden>Sign in</button>
   </header>
@@ -39,7 +39,7 @@
           <option value="yesterday">Yesterday</option>
           <option value="7">Last 7 days</option>
           <option value="month">This month</option>
-          <option value="all" selected>📅 All dates</option>
+          <option value="all" selected>All dates</option>
           <option value="range">Pick a date range…</option>
         </select>
         <span class="daterange" id="dateRange" hidden>
@@ -52,10 +52,10 @@
           <option value="price">Sort: Amount (high first)</option>
           <option value="newest">Sort: Newest</option>
         </select>
-        <button class="btn refresh-btn" type="button" data-refresh title="Reload the latest data"><span class="ri" aria-hidden="true">🔄</span><span class="rt">Refresh</span></button>
-        <button class="btn primary" id="addBtn" type="button">+ Add item to purchase</button>
-        <button class="btn bulk" id="bulkItemsBtn" type="button" title="Add many items at once. You can paste rows from Excel.">＋ Add many items</button>
-        <button class="btn bulk" id="bulkBuyBtn" type="button" title="Record one supplier's purchases for many items at once">🧾 Record purchases</button>
+        <button class="btn refresh-btn" type="button" data-refresh title="Reload the latest data"><span class="ri" aria-hidden="true"><svg class="ti" aria-hidden="true"><use href="#ti-refresh"/></svg></span><span class="rt">Refresh</span></button>
+        <button class="btn primary" id="addBtn" type="button"><svg class="ti" aria-hidden="true"><use href="#ti-plus"/></svg> Add item to purchase</button>
+        <button class="btn bulk" id="bulkItemsBtn" type="button" title="Add many items at once. You can paste rows from Excel."><svg class="ti" aria-hidden="true"><use href="#ti-plus"/></svg> Add many items</button>
+        <button class="btn bulk" id="bulkBuyBtn" type="button" title="Record one supplier's purchases for many items at once"><svg class="ti" aria-hidden="true"><use href="#ti-receipt"/></svg> Record purchases</button>
       </div>
       <div class="pane-switch" id="paneSwitch" role="group" aria-label="Show">
         <button type="button" data-pane="todo" aria-pressed="true">To purchase <b id="cntTodo">0</b></button>
@@ -63,21 +63,21 @@
       </div>
       <div class="board" id="board" data-pane="todo">
         <section class="col todo" aria-labelledby="hTodo">
-          <header class="col-head"><h2 id="hTodo">🛒 To purchase</h2><p id="sumTodo"></p></header>
+          <header class="col-head"><h2 id="hTodo"><svg class="ti" aria-hidden="true"><use href="#ti-shopping-cart"/></svg> To purchase</h2><p id="sumTodo"></p></header>
           <div class="cards" id="listTodo" data-drop="todo"></div>
         </section>
         <section class="col bought" aria-labelledby="hBought">
-          <header class="col-head"><h2 id="hBought">✅ Purchased</h2><p id="sumBought"></p></header>
+          <header class="col-head"><h2 id="hBought"><svg class="ti" aria-hidden="true"><use href="#ti-circle-check"/></svg> Purchased</h2><p id="sumBought"></p></header>
           <div class="cards" id="listBought" data-drop="bought"></div>
         </section>
       </div>
     </section>
 
     <section class="tab" id="tab-reports" hidden>
-      <div class="refreshbar"><button class="btn refresh-btn" type="button" data-refresh title="Reload the latest data"><span class="ri" aria-hidden="true">🔄</span><span class="rt">Refresh</span></button><small class="muted" data-updated></small></div>
+      <div class="refreshbar"><button class="btn refresh-btn" type="button" data-refresh title="Reload the latest data"><span class="ri" aria-hidden="true"><svg class="ti" aria-hidden="true"><use href="#ti-refresh"/></svg></span><span class="rt">Refresh</span></button><small class="muted" data-updated></small></div>
       <div id="reportsRoot"></div></section>
     <section class="tab" id="tab-budget" hidden>
-      <div class="refreshbar"><button class="btn refresh-btn" type="button" data-refresh title="Reload the latest data"><span class="ri" aria-hidden="true">🔄</span><span class="rt">Refresh</span></button><small class="muted" data-updated></small></div>
+      <div class="refreshbar"><button class="btn refresh-btn" type="button" data-refresh title="Reload the latest data"><span class="ri" aria-hidden="true"><svg class="ti" aria-hidden="true"><use href="#ti-refresh"/></svg></span><span class="rt">Refresh</span></button><small class="muted" data-updated></small></div>
       <div id="budgetRoot"></div></section>
     <section class="tab" id="tab-settings" hidden><div id="settingsRoot"></div></section>
   </main>
@@ -160,7 +160,7 @@
         <summary>Paste or type a list instead</summary>
         <p class="hint">One item per line, like <i>12 m Stranded Wire THHN 14mm</i> or <i>2 pcs Solderless 150mm @ 652</i> (quantity, unit, item, and optional price after @).</p>
         <textarea id="biQuick" rows="5" placeholder="12 m Stranded Wire THHN 14mm (Red) @ 198.50&#10;2 pcs Straight Connector 1 1/4&#10;1 pc Hole sole 1 1/4"></textarea>
-        <button class="btn small" type="button" id="biQuickGo">Fill the table ↓</button>
+        <button class="btn small" type="button" id="biQuickGo">Fill the table <svg class="ti" aria-hidden="true"><use href="#ti-arrow-down"/></svg></button>
       </details>
       <div class="bscroll">
         <div class="bhead"><span></span><span>Qty</span><span>Unit</span><span>Item / material</span><span>Budget each</span><span>Category</span><span></span></div>
@@ -260,6 +260,7 @@
   <script src="js/config.js"></script>
   <script src="js/api.js"></script>
   <script src="js/ui.js"></script>
+  <script src="js/icons.js"></script>
   <script src="js/board.js"></script>
   <script src="js/bulk.js"></script>
   <script src="js/insights.js"></script>

@@ -3,12 +3,12 @@
 //  - SheetApi: saved in a Google Sheet so every device sees the same list
 // An item = something the site needs (name, quantity, unit, budget price, ...) + its list of purchases (supplier, qty, price, date, ref).
 const DEFAULT_CATEGORIES = [
-  { name: "Cement & Masonry", icon: "🧱", limit: 0 }, { name: "Steel & Rebar", icon: "🔩", limit: 0 },
-  { name: "Lumber & Formworks", icon: "🪵", limit: 0 }, { name: "Electrical", icon: "⚡", limit: 0 },
-  { name: "Plumbing", icon: "🚰", limit: 0 }, { name: "Paint & Finishes", icon: "🎨", limit: 0 },
-  { name: "Tiles & Flooring", icon: "🔲", limit: 0 }, { name: "Roofing", icon: "🏠", limit: 0 },
-  { name: "Hardware & Fasteners", icon: "🔧", limit: 0 }, { name: "Tools & Equipment", icon: "🛠️", limit: 0 },
-  { name: "Safety & PPE", icon: "🦺", limit: 0 }, { name: "Other", icon: "📦", limit: 0 }
+  { name: "Cement & Masonry", icon: "wall", limit: 0 }, { name: "Steel & Rebar", icon: "stack-2", limit: 0 },
+  { name: "Lumber & Formworks", icon: "tree", limit: 0 }, { name: "Electrical", icon: "bolt", limit: 0 },
+  { name: "Plumbing", icon: "droplet", limit: 0 }, { name: "Paint & Finishes", icon: "palette", limit: 0 },
+  { name: "Tiles & Flooring", icon: "layout-grid", limit: 0 }, { name: "Roofing", icon: "home", limit: 0 },
+  { name: "Hardware & Fasteners", icon: "tool", limit: 0 }, { name: "Tools & Equipment", icon: "tools", limit: 0 },
+  { name: "Safety & PPE", icon: "shield-check", limit: 0 }, { name: "Other", icon: "package", limit: 0 }
 ];
 
 // Makes any item (from this device or from the sheet) safe to use: numbers are numbers, purchases is always a list.

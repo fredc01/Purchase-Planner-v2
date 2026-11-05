@@ -49,12 +49,12 @@
         <div class="kpi"><span>Budget left to buy</span><strong>${money(outstanding)}</strong></div>
       </div>
       <div class="grid2">
-        <section class="panel"><h3>Spending by category</h3>${cats.length ? `<ul class="bars">${cats.map(([k, v]) => bar(`${esc(PP.catOf(k).icon)} ${esc(k)}`, v, cats[0][1], PP.catColor(k), ` <small>${pct(v)}%</small>`)).join("")}</ul>` : `<p class="empty-s">No purchases in this period.</p>`}</section>
+        <section class="panel"><h3>Spending by category</h3>${cats.length ? `<ul class="bars">${cats.map(([k, v]) => bar(`${PP.catIcon(PP.catOf(k))} ${esc(k)}`, v, cats[0][1], PP.catColor(k), ` <small>${pct(v)}%</small>`)).join("")}</ul>` : `<p class="empty-s">No purchases in this period.</p>`}</section>
         <section class="panel"><h3>Spending by supplier</h3>${sups.length ? `<ul class="bars">${sups.map(([k, v, n]) => bar(esc(k), v, sups[0][1], "var(--teal)", ` <small>${n} ${n === 1 ? "purchase" : "purchases"}</small>`)).join("")}</ul>` : `<p class="empty-s">No purchases in this period.</p>`}</section>
         <section class="panel"><h3>Spending by month <small>(last 6 months)</small></h3>
           <div class="cols">${months.map((m, i) => `<div class="colbar"><span class="cv">${perMonth[i] ? money(perMonth[i]) : ""}</span><i style="height:${perMonth[i] ? Math.max(4, perMonth[i] / maxM * 100) : 0}%"></i><span class="cl">${m.label}</span></div>`).join("")}</div></section>
         <section class="panel"><h3>Still to purchase</h3>${open.length ? `<ol class="rank">${open.slice(0, 8).map(i => `<li><span>${esc(i.name)}<small>${fq(PP.remaining(i))} of ${fq(i.qty)} ${esc(i.unit)} left${i.needed ? ` · needed ${PP.fmtDate(i.needed)}` : ""}</small></span><b>${i.est > 0 ? money(PP.remaining(i) * i.est) : "–"}</b></li>`).join("")}</ol>${open.length > 8 ? more(open.length - 8) : ""}` : `<p class="empty-s">Everything on the list is purchased.</p>`}</section>
-        ${projs.length ? `<section class="panel"><h3>Spending by project / area</h3><ul class="bars">${projs.map(([k, v]) => bar(`📍 ${esc(k)}`, v, projs[0][1], "var(--amber)", ` <small>${pct(v)}%</small>`)).join("")}</ul></section>` : ""}
+        ${projs.length ? `<section class="panel"><h3>Spending by project / area</h3><ul class="bars">${projs.map(([k, v]) => bar(`<svg class="ti" aria-hidden="true"><use href="#ti-map-pin"/></svg> ${esc(k)}`, v, projs[0][1], "var(--amber)", ` <small>${pct(v)}%</small>`)).join("")}</ul></section>` : ""}
         <section class="panel"><h3>Biggest purchases</h3>${biggest.length ? `<ol class="rank">${biggest.map(r => `<li><span>${esc(r.i.name)}<small>${esc(r.l.supplier || "No supplier")} · ${PP.fmtDate(r.l.date)}</small></span><b>${money(r.amt)}</b></li>`).join("")}</ol>` : `<p class="empty-s">Nothing yet.</p>`}</section>
         <section class="panel wide"><h3>Purchase log <small>(${rows.length} ${rows.length === 1 ? "purchase" : "purchases"} in this period)</small></h3>
           ${log.length ? `<div class="tablewrap"><table class="log"><thead><tr><th>Date</th><th>Item</th><th>Supplier</th><th class="r">Qty</th><th class="r">Price each</th><th class="r">Total</th><th>Paid from</th><th>Receipt</th></tr></thead><tbody>
@@ -62,8 +62,8 @@
             ${log.length > LOG_MAX ? `<p class="empty-s">Showing the latest ${LOG_MAX}. Copy the CSV below to get all of them.</p>` : ""}` : `<p class="empty-s">No purchases in this period.</p>`}</section>
       </div>
       <div class="export">
-        <button class="btn" id="copyLog" type="button">📋 Copy purchase log (CSV)</button><button class="btn" id="copyNeeds" type="button">📋 Copy items list (CSV)</button>
-        ${cap ? `<button class="btn" id="dlLog" type="button">⬇️ Download purchase log</button><button class="btn" id="dlNeeds" type="button">⬇️ Download items list</button>` : ""}</div>`;
+        <button class="btn" id="copyLog" type="button"><svg class="ti" aria-hidden="true"><use href="#ti-clipboard"/></svg> Copy purchase log (CSV)</button><button class="btn" id="copyNeeds" type="button"><svg class="ti" aria-hidden="true"><use href="#ti-clipboard"/></svg> Copy items list (CSV)</button>
+        ${cap ? `<button class="btn" id="dlLog" type="button"><svg class="ti" aria-hidden="true"><use href="#ti-download"/></svg> Download purchase log</button><button class="btn" id="dlNeeds" type="button"><svg class="ti" aria-hidden="true"><use href="#ti-download"/></svg> Download items list</button>` : ""}</div>`;
   }
   $("#reportsRoot").addEventListener("click", async (e) => {
     const r = e.target.closest("[data-range]");
@@ -116,7 +116,7 @@
       <section class="panel big"><h3>Limits by category <small>(this month)</small></h3>
         <form id="limitForm" novalidate>
           <ul class="limits">${S.categories.map(c => { const s = sumA(byCat[c.name] || []), p = c.limit ? s / c.limit * 100 : 0; return `<li>
-            <div class="bar-row"><span class="bar-label">${esc(c.icon)} ${esc(c.name)}</span><span class="bar-val">${money(s)}${c.limit ? ` / ${money(c.limit)}` : ""}</span></div>
+            <div class="bar-row"><span class="bar-label">${PP.catIcon(c)} ${esc(c.name)}</span><span class="bar-val">${money(s)}${c.limit ? ` / ${money(c.limit)}` : ""}</span></div>
             ${c.limit ? `<div class="meter sm ${p > 100 ? "over" : p > 85 ? "warn" : ""}"><i style="width:${Math.min(100, p)}%"></i></div>` : ""}
             <label class="lim">Limit<input name="lim" data-cat="${esc(c.name)}" type="number" min="0" step="0.01" inputmode="decimal" value="${c.limit || ""}" placeholder="No limit"></label></li>`; }).join("")}</ul>
           <button class="btn primary" type="submit">Save limits</button>
@@ -153,8 +153,8 @@
       <section class="panel big"><h3>Currency</h3>
         <form id="curForm" class="inline" novalidate><label>Symbol shown before prices<input name="currency" maxlength="4" value="${esc(S.currency)}" placeholder="₱"></label><button class="btn primary" type="submit">Save</button></form></section>
       <section class="panel big"><h3>Categories</h3>
-        <ul class="catlist">${S.categories.map(c => `<li><span class="chip cat" style="--c:${PP.catColor(c.name)}">${esc(c.icon)} ${esc(c.name)}</span>
-          ${c.name === "Other" ? `<small class="muted">always kept</small>` : `<button class="icon-btn" data-delcat="${esc(c.name)}" type="button" aria-label="Remove ${esc(c.name)}">✕</button>`}</li>`).join("")}</ul>
+        <ul class="catlist">${S.categories.map(c => `<li><span class="chip cat" style="--c:${PP.catColor(c.name)}">${PP.catIcon(c)} ${esc(c.name)}</span>
+          ${c.name === "Other" ? `<small class="muted">always kept</small>` : `<button class="icon-btn" data-delcat="${esc(c.name)}" type="button" aria-label="Remove ${esc(c.name)}"><svg class="ti" aria-hidden="true"><use href="#ti-x"/></svg></button>`}</li>`).join("")}</ul>
         <form id="catForm" class="inline" novalidate><label>New category<input name="cat" maxlength="24" placeholder="e.g. Glass & Windows"></label><button class="btn primary" type="submit">Add</button></form></section>
       <section class="panel big"><h3>Your data</h3>
         ${Api.mode === "local" ? `<p class="hint">Your list is saved on this device only. To share it between your phone and computer, connect a Google Sheet (see README.md). The sample items can be cleared to start fresh.</p>
@@ -174,7 +174,7 @@
       if (!v) { PP.showError(inp.closest("label"), "Type a category name first."); inp.focus(); return; }
       if (S.categories.some(c => c.name.toLowerCase() === v.toLowerCase())) { PP.showError(inp.closest("label"), "You already have that category."); inp.focus(); return; }
       if (!(await PP.gate())) return;
-      S.categories.splice(Math.max(0, S.categories.findIndex(c => c.name === "Other")), 0, { name: v, icon: "🏷️", limit: 0 });
+      S.categories.splice(Math.max(0, S.categories.findIndex(c => c.name === "Other")), 0, { name: v, icon: "tag", limit: 0 });
       PP.render(); PP.save(() => Api.saveSettings(S), "Category added");
     }
   });

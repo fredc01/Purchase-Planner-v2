@@ -42,8 +42,8 @@
         ${l.coh == null ? `<span class="pay none">Paid from: not set</span>` : `<span class="pay ${PP.payClass(l)}" title="COH ${money(PP.lineCoh(l))} · BANK ${money(PP.lineBank(l))}">${PP.payLabel(l)}</span>`}</div>
       <div class="ln-amt"><b>${money(PP.lineAmt(l))}</b><small>${l.date ? fmtDate(l.date) : ""}${l.ref ? ` · ${esc(l.ref)}` : ""}</small></div>
       <div class="ln-act">
-        <button class="icon-btn sm" data-act="editbuy" data-line="${esc(l.id)}" type="button" aria-label="Edit purchase from ${esc(l.supplier || "supplier")}">✎</button>
-        <button class="icon-btn sm" data-act="delbuy" data-line="${esc(l.id)}" type="button" aria-label="Delete purchase from ${esc(l.supplier || "supplier")}">✕</button>
+        <button class="icon-btn sm" data-act="editbuy" data-line="${esc(l.id)}" type="button" aria-label="Edit purchase from ${esc(l.supplier || "supplier")}"><svg class="ti" aria-hidden="true"><use href="#ti-pencil"/></svg></button>
+        <button class="icon-btn sm" data-act="delbuy" data-line="${esc(l.id)}" type="button" aria-label="Delete purchase from ${esc(l.supplier || "supplier")}"><svg class="ti" aria-hidden="true"><use href="#ti-x"/></svg></button>
       </div></li>`;
   }
 
@@ -80,24 +80,24 @@
     return `<article class="card ${bought ? "is-bought" : "p-" + i.priority}" draggable="true" data-id="${esc(i.id)}">
       <header class="card-head">
         <div class="ch-main"><h3>${esc(i.name)}</h3>
-          <div class="chips"><span class="chip cat" style="--c:${PP.catColor(i.category)}">${esc(c.icon)} ${esc(i.category)}</span>
-            ${i.project ? `<span class="chip">📍 ${esc(i.project)}</span>` : ""}
+          <div class="chips"><span class="chip cat" style="--c:${PP.catColor(i.category)}">${PP.catIcon(c)} ${esc(i.category)}</span>
+            ${i.project ? `<span class="chip"><svg class="ti" aria-hidden="true"><use href="#ti-map-pin"/></svg> ${esc(i.project)}</span>` : ""}
             ${bought ? "" : `<span class="chip pri-${i.priority}">${PRI_LABEL[i.priority]}</span>`}</div></div>
         <div class="price"><small>${bought ? "Paid" : "Budget"}</small><strong>${(bought ? paid : PP.budget(i)) > 0 ? money(bought ? paid : PP.budget(i)) : "–"}</strong></div>
       </header>
       <div class="card-body">${need}${buys}</div>
       <footer class="card-actions">
-        ${bought ? `<button class="btn small" data-act="undo" type="button">↩ Move back</button>`
-          : (lines.length ? `<button class="btn small good" data-act="complete" type="button">✓ Mark purchased</button>` : "")}
+        ${bought ? `<button class="btn small" data-act="undo" type="button"><svg class="ti" aria-hidden="true"><use href="#ti-arrow-back-up"/></svg> Move back</button>`
+          : (lines.length ? `<button class="btn small good" data-act="complete" type="button"><svg class="ti" aria-hidden="true"><use href="#ti-check"/></svg> Mark purchased</button>` : "")}
         <span class="grow"></span>
-        <button class="icon-btn" data-act="edit" type="button" aria-label="Edit ${esc(i.name)}">✎</button>
-        <button class="icon-btn" data-act="del" type="button" aria-label="Delete ${esc(i.name)}">🗑</button>
+        <button class="icon-btn" data-act="edit" type="button" aria-label="Edit ${esc(i.name)}"><svg class="ti" aria-hidden="true"><use href="#ti-pencil"/></svg></button>
+        <button class="icon-btn" data-act="del" type="button" aria-label="Delete ${esc(i.name)}"><svg class="ti" aria-hidden="true"><use href="#ti-trash"/></svg></button>
       </footer></article>`;
   }
 
   function fillFilters() {
     const f = $("#fCat"), cur = f.value || "all", cats = PP.state.settings.categories;
-    f.innerHTML = `<option value="all">All categories</option>` + cats.map(c => `<option value="${esc(c.name)}">${esc(c.icon)} ${esc(c.name)}</option>`).join("");
+    f.innerHTML = `<option value="all">All categories</option>` + cats.map(c => `<option value="${esc(c.name)}">${esc(c.name)}</option>`).join("");
     f.value = cats.some(c => c.name === cur) ? cur : "all";
     const uniq = (fn) => [...new Set(PP.state.items.flatMap(fn).filter(Boolean))].sort().map(s => `<option value="${esc(s)}">`).join("");
     $("#supplierList").innerHTML = uniq(i => PP.lines(i).map(l => l.supplier));
@@ -143,7 +143,7 @@
   PP.clearOnInput(f);
   function openItem(item) {
     f.reset(); PP.clearAll(f); $("#itemError").textContent = "";
-    fv("category").innerHTML = PP.state.settings.categories.map(c => `<option value="${esc(c.name)}">${esc(c.icon)} ${esc(c.name)}</option>`).join("");
+    fv("category").innerHTML = PP.state.settings.categories.map(c => `<option value="${esc(c.name)}">${esc(c.name)}</option>`).join("");
     $("#itemTitle").textContent = item ? "Edit item" : "Add item to purchase";
     const set = { id: item ? item.id : "", name: item ? item.name : "", category: item ? item.category : PP.state.settings.categories[0].name,
       project: item ? item.project : "", qty: item ? item.qty : 1, unit: item ? item.unit : "pcs", est: item && item.est ? item.est : "",
