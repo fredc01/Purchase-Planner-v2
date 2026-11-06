@@ -29,11 +29,88 @@ const PP = { state: null, tab: "board" };
   PP.remaining = (i) => Math.max(0, r3((Number(i.qty) || 0) - PP.boughtQty(i)));
   PP.saved = (i) => (Number(i.est) > 0 ? PP.boughtQty(i) * i.est - PP.paid(i) : 0);   // + = under budget, - = over budget
 
-  /* ---- where each purchase was paid from: coh = % paid from cash on hand (0-100), the rest is BANK. null = not chosen yet ---- */
-  PP.lineCoh = (l) => (l.coh == null ? 0 : PP.lineAmt(l) * l.coh / 100);
-  PP.lineBank = (l) => (l.coh == null ? 0 : PP.lineAmt(l) * (100 - l.coh) / 100);
-  PP.payLabel = (l) => (l.coh == null ? "" : l.coh >= 100 ? "COH" : l.coh <= 0 ? "BANK" : `COH ${PP.money(PP.lineCoh(l))} · BANK ${PP.money(PP.lineBank(l))}`);
-  PP.payClass = (l) => (l.coh == null ? "" : l.coh >= 100 ? "coh" : l.coh <= 0 ? "bank" : "split");
+  /* ---- where each purchase was paid from ----
+         coh = % paid from cash on hand, oth = % paid by another person (othBy = their name), the rest is BANK.
+         coh = null means "not chosen yet". Purchases saved before "paid by other person" have no oth, which counts as 0. ---- */
+  const EPS = 1e-6, r2 = (x) => Math.round(x * 100) / 100;
+  PP.shares = (l) => {
+    if (l.coh == null) return { coh: 0, oth: 0, bank: 0 };
+    const coh = Math.min(100, Math.max(0, Number(l.coh) || 0)), oth = Math.min(100 - coh, Math.max(0, Number(l.oth) || 0));
+    return { coh, oth, bank: Math.max(0, 100 - coh - oth) };
+  };
+  PP.lineCoh = (l) => PP.lineAmt(l) * PP.shares(l).coh / 100;
+  PP.lineOth = (l) => PP.lineAmt(l) * PP.shares(l).oth / 100;
+  PP.lineBank = (l) => PP.lineAmt(l) * PP.shares(l).bank / 100;
+  PP.otherName = (l) => String(l.othBy || "").trim() || "Other person";
+  PP.payKind = (l) => {          // "" (not chosen) | coh | bank | other | split
+    if (l.coh == null) return "";
+    const s = PP.shares(l);
+    return s.coh >= 100 - EPS ? "coh" : s.oth >= 100 - EPS ? "other" : s.bank >= 100 - EPS ? "bank" : "split";
+  };
+  PP.payClass = PP.payKind;
+  PP.payDetail = (l) => {        // every part that is more than 0, e.g. "COH ₱500 · Juan ₱300"
+    const parts = [];
+    if (PP.lineCoh(l) > 0.004) parts.push(`COH ${PP.money(PP.lineCoh(l))}`);
+    if (PP.lineBank(l) > 0.004) parts.push(`BANK ${PP.money(PP.lineBank(l))}`);
+    if (PP.lineOth(l) > 0.004) parts.push(`${PP.otherName(l)} ${PP.money(PP.lineOth(l))}`);
+    return parts.join(" · ");
+  };
+  PP.payLabel = (l) => { const k = PP.payKind(l); return k === "coh" ? "COH" : k === "bank" ? "BANK" : k === "other" ? `Paid by ${PP.otherName(l)}` : k === "split" ? PP.payDetail(l) : ""; };
+
+  /* ---- the "Paid from" part of a form: COH / BANK / Paid by other person / Split payment.
+         Used by Add purchase, Record purchases and Add many. The form needs: select[name=source], input[name=othBy] inside .pay-other,
+         and (when split is offered) .pay-split holding inputs cohAmt, bankAmt, othAmt. ---- */
+  const pf = (form, n) => form.elements.namedItem(n);
+  const amt0 = (form, n) => { const e = pf(form, n), x = e ? PP.num(e.value) : NaN; return Number.isFinite(x) ? x : 0; };
+  // show / hide the extra fields for the chosen way of paying. total = what this purchase (or receipt) adds up to.
+  PP.payUI = (form, total) => {
+    const s = pf(form, "source").value, sp = form.querySelector(".pay-split"), ot = form.querySelector(".pay-other"), full = form.querySelector(".oth-full");
+    if (sp) sp.hidden = s !== "split";
+    ot.hidden = !(s === "other" || (s === "split" && amt0(form, "othAmt") > 0));
+    if (full) { full.hidden = s !== "other"; if (s === "other") pf(form, "othFull").value = total > 0 ? PP.money(total) : ""; }
+  };
+  // keeps COH + BANK + other person adding up to the total: type any amount and BANK (or COH, when you type BANK) fills in the rest
+  PP.payBalance = (form, changed, total) => {
+    if (!pf(form, "cohAmt") || pf(form, "source").value !== "split" || !(total > 0)) return;
+    const left = (skip) => r2(Math.max(0, total - amt0(form, skip[0]) - amt0(form, skip[1])));
+    if (changed === "bankAmt") pf(form, "cohAmt").value = left(["bankAmt", "othAmt"]);
+    else if (changed === "cohAmt" || changed === "othAmt" || (changed === "total" && (pf(form, "cohAmt").value.trim() || pf(form, "othAmt").value.trim()))) pf(form, "bankAmt").value = left(["cohAmt", "othAmt"]);
+  };
+  // what the person chose, as { ok, coh, oth, othBy } (coh / oth are % of the total). When not ok: { field, msg } for the themed error.
+  PP.readPay = (form, total) => {
+    const s = pf(form, "source").value, name = pf(form, "othBy").value.trim();
+    if (s === "coh") return { ok: true, coh: 100, oth: 0, othBy: "" };
+    if (s === "bank") return { ok: true, coh: 0, oth: 0, othBy: "" };
+    if (s === "other") return name ? { ok: true, coh: 0, oth: 100, othBy: name } : { ok: false, field: "othBy", msg: "Type the name of the person who paid." };
+    if (s === "split") {
+      const c = amt0(form, "cohAmt"), b = amt0(form, "bankAmt"), o = amt0(form, "othAmt");
+      if (!(total > 0) || c < 0 || b < 0 || o < 0 || Math.abs(c + b + o - total) > 0.005 || [c, b, o].filter(x => x > 0.004).length < 2)
+        return { ok: false, field: "cohAmt", msg: `Type how much each one paid. The amounts must add up to ${PP.money(total)}, and at least two must be more than 0.` };
+      if (o > 0.004 && !name) return { ok: false, field: "othBy", msg: "Type the name of the person who paid their part." };
+      return { ok: true, coh: c / total * 100, oth: o / total * 100, othBy: o > 0.004 ? name : "" };
+    }
+    return { ok: false, field: "source", msg: "Choose where the payment came from: COH, BANK, another person or a split." };
+  };
+  // " (COH ₱500 · Juan paid ₱300)" plus a warning when COH or BANK would run short. Money paid by another person never touches COH or BANK.
+  PP.payText = (p, total, excludeId) => {
+    const c = total * p.coh / 100, o = total * p.oth / 100, b = Math.max(0, total - c - o), F = PP.funds(excludeId), parts = [];
+    if (c > 0.004) parts.push(`COH ${PP.money(c)}`);
+    if (b > 0.004) parts.push(`BANK ${PP.money(b)}`);
+    if (o > 0.004) parts.push(`${p.othBy} paid ${PP.money(o)}`);
+    let t = parts.length ? ` (${parts.join(" · ")})` : "";
+    if (F.set) { const low = [c > F.coh + 0.005 ? `COH (available ${PP.money(F.coh)})` : "", b > F.bank + 0.005 ? `BANK (available ${PP.money(F.bank)})` : ""].filter(Boolean); if (low.length) t += `. Not enough ${low.join(" and ")}.`; }
+    return t;
+  };
+  // fill the Paid from fields when editing an existing purchase (line = null: leave everything empty)
+  PP.fillPay = (form, line) => {
+    const k = line ? PP.payKind(line) : "";
+    pf(form, "source").value = k; pf(form, "othBy").value = line && line.othBy ? line.othBy : "";
+    ["cohAmt", "bankAmt", "othAmt"].forEach(n => { if (pf(form, n)) pf(form, n).value = ""; });
+    if (k === "split") {
+      pf(form, "cohAmt").value = r2(PP.lineCoh(line)); pf(form, "bankAmt").value = r2(PP.lineBank(line));
+      if (PP.lineOth(line) > 0.004) pf(form, "othAmt").value = r2(PP.lineOth(line));
+    }
+  };
   // Balance = what you typed in Budget. Remaining = balance minus every purchase line on cards that are in "Purchased" (any date).
   // excludeId: leave one purchase out (used while editing it).
   PP.funds = (excludeId) => {

@@ -130,12 +130,18 @@
         <label>Receipt / DR no.<input name="ref" maxlength="30" placeholder="Optional" autocomplete="off"></label>
       </div>
       <label>Paid from<select name="source">
-        <option value="">Choose…</option><option value="coh">Cash on hand (COH)</option><option value="bank">Bank</option><option value="split">Split between COH and BANK</option></select></label>
-      <div class="row2" id="splitRow" hidden>
-        <label>From COH (amount)<input name="cohAmt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="How much from COH"></label>
-        <label>From BANK (amount)<input name="bankAmt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="How much from BANK"></label>
+        <option value="">Choose…</option><option value="coh">Cash on hand (COH)</option><option value="bank">Bank</option><option value="other">Paid by other person</option><option value="split">Split payment</option></select></label>
+      <div class="row2 pay-other" hidden>
+        <label>Paid by (name)<input name="othBy" list="payerList" maxlength="40" placeholder="Who paid?" autocomplete="off"></label>
+        <label class="oth-full">Amount they paid<input name="othFull" readonly tabindex="-1" placeholder="Whole purchase"></label>
+      </div>
+      <div class="row3 pay-split" hidden>
+        <label>From COH (amount)<input name="cohAmt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="COH"></label>
+        <label>From BANK (amount)<input name="bankAmt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="BANK"></label>
+        <label>By other person (amount)<input name="othAmt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Other person"></label>
       </div>
       <datalist id="supplierList"></datalist>
+      <datalist id="payerList"></datalist>
       <p class="hint total-line" id="buyTotal"></p>
       <p class="form-error" id="buyError" role="alert"></p>
       <div class="dialog-actions">
@@ -185,11 +191,16 @@
         <label>Date bought<input name="date" type="date"></label>
         <label>Receipt / DR no.<input name="ref" maxlength="30" placeholder="Optional" autocomplete="off"></label>
         <label>Paid from<select name="source">
-          <option value="">Choose…</option><option value="coh">Cash on hand (COH)</option><option value="bank">Bank</option><option value="split">Split between COH and BANK</option></select></label>
+          <option value="">Choose…</option><option value="coh">Cash on hand (COH)</option><option value="bank">Bank</option><option value="other">Paid by other person</option><option value="split">Split payment</option></select></label>
       </div>
-      <div class="row2" id="bpSplit" hidden>
-        <label>From COH (amount)<input name="cohAmt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="How much from COH"></label>
-        <label>From BANK (amount)<input name="bankAmt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="How much from BANK"></label>
+      <div class="row2 pay-other" hidden>
+        <label>Paid by (name)<input name="othBy" list="payerList" maxlength="40" placeholder="Who paid?" autocomplete="off"></label>
+        <label class="oth-full">Amount they paid<input name="othFull" readonly tabindex="-1" placeholder="Whole receipt"></label>
+      </div>
+      <div class="row3 pay-split" hidden>
+        <label>From COH (amount)<input name="cohAmt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="COH"></label>
+        <label>From BANK (amount)<input name="bankAmt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="BANK"></label>
+        <label>By other person (amount)<input name="othAmt" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Other person"></label>
       </div>
       <input id="bpFilter" type="search" placeholder="Filter the items below…" aria-label="Filter items">
       <div class="bscroll">
@@ -213,13 +224,17 @@
       <p class="hint">One row for each supplier you bought this item from. Press <b>Enter</b> for the next row, or paste rows from Excel (Supplier, Qty, Price each, Receipt no.).</p>
       <div class="row2">
         <label>Date bought<input name="date" type="date"></label>
-        <label>Paid from<select name="source"><option value="">Choose…</option><option value="coh">Cash on hand (COH)</option><option value="bank">Bank</option></select></label>
+        <label>Paid from<select name="source"><option value="">Choose…</option><option value="coh">Cash on hand (COH)</option><option value="bank">Bank</option><option value="other">Paid by other person</option></select></label>
+      </div>
+      <div class="row2 pay-other" hidden>
+        <label>Paid by (name)<input name="othBy" list="payerList" maxlength="40" placeholder="Who paid?" autocomplete="off"></label>
+        <label class="oth-full">Amount they paid<input name="othFull" readonly tabindex="-1" placeholder="All rows"></label>
       </div>
       <div class="bscroll">
         <div class="mhead"><span></span><span>Supplier</span><span>Qty bought</span><span>Price each</span><span>Receipt / DR no.</span><span class="r">Amount</span><span></span></div>
         <div class="bgrid" id="mbGrid"></div>
       </div>
-      <div class="grid-tools"><button class="btn small" type="button" id="mbMore">+ 3 more rows</button><span class="hint">To split one purchase between COH and BANK, use <b>+ Add purchase</b> on the card.</span></div>
+      <div class="grid-tools"><button class="btn small" type="button" id="mbMore">+ 3 more rows</button><span class="hint">To split one purchase between COH, BANK and another person, use <b>+ Add purchase</b> on the card.</span></div>
       <p class="grand" id="mbTotal"></p>
       <p class="form-error" id="mbError" role="alert"></p>
       <div class="dialog-actions">

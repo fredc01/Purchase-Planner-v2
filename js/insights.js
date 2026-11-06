@@ -43,6 +43,7 @@
         <div class="kpi"><span>Total spent</span><strong>${money(spent)}</strong></div>
         <div class="kpi"><span>Paid from COH</span><strong>${money(rows.reduce((s, r) => s + PP.lineCoh(r.l), 0))}</strong></div>
         <div class="kpi"><span>Paid from BANK</span><strong>${money(rows.reduce((s, r) => s + PP.lineBank(r.l), 0))}</strong></div>
+        <div class="kpi"><span>Paid by other person</span><strong>${money(rows.reduce((s, r) => s + PP.lineOth(r.l), 0))}</strong></div>
         <div class="kpi"><span>Purchases recorded</span><strong>${rows.length}</strong></div>
         <div class="kpi ${saved >= 0 ? "good" : "bad"}"><span>${saved >= 0 ? "Saved vs budget" : "Over budget"}</span><strong>${money(Math.abs(saved))}</strong></div>
         <div class="kpi"><span>Items still to purchase</span><strong>${open.length}</strong></div>
@@ -58,7 +59,7 @@
         <section class="panel"><h3>Biggest purchases</h3>${biggest.length ? `<ol class="rank">${biggest.map(r => `<li><span>${esc(r.i.name)}<small>${esc(r.l.supplier || "No supplier")} · ${PP.fmtDate(r.l.date)}</small></span><b>${money(r.amt)}</b></li>`).join("")}</ol>` : `<p class="empty-s">Nothing yet.</p>`}</section>
         <section class="panel wide"><h3>Purchase log <small>(${rows.length} ${rows.length === 1 ? "purchase" : "purchases"} in this period)</small></h3>
           ${log.length ? `<div class="tablewrap"><table class="log"><thead><tr><th>Date</th><th>Item</th><th>Supplier</th><th class="r">Qty</th><th class="r">Price each</th><th class="r">Total</th><th>Paid from</th><th>Receipt</th></tr></thead><tbody>
-            ${log.slice(0, LOG_MAX).map(r => `<tr><td>${PP.fmtDate(r.l.date)}</td><td>${esc(r.i.name)}</td><td>${esc(r.l.supplier || "–")}</td><td class="r">${fq(r.l.qty)} ${esc(r.i.unit)}</td><td class="r">${money(r.l.price)}</td><td class="r"><b>${money(r.amt)}</b></td><td>${r.l.coh == null ? "–" : `<span class="pay ${PP.payClass(r.l)}">${PP.payLabel(r.l)}</span>`}</td><td>${esc(r.l.ref || "")}</td></tr>`).join("")}</tbody></table></div>
+            ${log.slice(0, LOG_MAX).map(r => `<tr><td>${PP.fmtDate(r.l.date)}</td><td>${esc(r.i.name)}</td><td>${esc(r.l.supplier || "–")}</td><td class="r">${fq(r.l.qty)} ${esc(r.i.unit)}</td><td class="r">${money(r.l.price)}</td><td class="r"><b>${money(r.amt)}</b></td><td>${r.l.coh == null ? "–" : `<span class="pay ${PP.payClass(r.l)}">${esc(PP.payLabel(r.l))}</span>`}</td><td>${esc(r.l.ref || "")}</td></tr>`).join("")}</tbody></table></div>
             ${log.length > LOG_MAX ? `<p class="empty-s">Showing the latest ${LOG_MAX}. Copy the CSV below to get all of them.</p>` : ""}` : `<p class="empty-s">No purchases in this period.</p>`}</section>
       </div>
       <div class="export">
@@ -75,8 +76,8 @@
   });
   const csvOf = (rows) => rows.map(r => r.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
   function logCsv() {   // one row per purchase
-    const rows = [["Date", "Item", "Category", "Project / area", "Supplier", "Qty", "Unit", "Price each", "Total", "Paid from COH", "Paid from BANK", "Receipt / DR no.", "Budget each"]];
-    allLines().sort((a, b) => a.l.date.localeCompare(b.l.date)).forEach(({ i, l, amt }) => rows.push([l.date, i.name, i.category, i.project, l.supplier, l.qty, i.unit, l.price, amt, PP.lineCoh(l), PP.lineBank(l), l.ref, i.est]));
+    const rows = [["Date", "Item", "Category", "Project / area", "Supplier", "Qty", "Unit", "Price each", "Total", "Paid from COH", "Paid from BANK", "Paid by other person", "Other person's name", "Receipt / DR no.", "Budget each"]];
+    allLines().sort((a, b) => a.l.date.localeCompare(b.l.date)).forEach(({ i, l, amt }) => rows.push([l.date, i.name, i.category, i.project, l.supplier, l.qty, i.unit, l.price, amt, PP.lineCoh(l), PP.lineBank(l), PP.lineOth(l), PP.lineOth(l) > 0.004 ? PP.otherName(l) : "", l.ref, i.est]));
     return csvOf(rows);
   }
   function needsCsv() {  // one row per item needed
@@ -102,7 +103,7 @@
           <label>COH Balance<input name="coh" type="number" step="0.01" inputmode="decimal" value="${F.set ? r2(F.balCoh) : ""}" placeholder="Available cash on hand"></label>
           <label>BANK Balance<input name="bank" type="number" step="0.01" inputmode="decimal" value="${F.set ? r2(F.balBank) : ""}" placeholder="Available bank balance"></label>
           <button class="btn primary" type="submit">Save balances</button></form>
-        <p class="hint">Type the cash on hand and the bank balance you have available. The Board shows what is remaining: these balances minus every card in Purchased, taken from COH, BANK or both as chosen on each purchase.</p>
+        <p class="hint">Type the cash on hand and the bank balance you have available. The Board shows what is remaining: these balances minus every card in Purchased, taken from COH, BANK or both as chosen on each purchase. Money paid by another person does not take anything out of COH or BANK.</p>
       </section>
       <section class="panel big">
         <h3>Monthly budget</h3>

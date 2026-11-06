@@ -180,27 +180,16 @@
     <input class="p-price" inputmode="decimal" placeholder="${i.est > 0 ? esc(String(i.est)) : "Price each"}" aria-label="Price each">
     <span class="p-amt">–</span></div>`; };
 
-  // how much of the whole receipt came from COH (0-100), or null while nothing valid is chosen
-  const share = () => {
-    const s = pv("source").value; if (s === "coh") return 100; if (s === "bank") return 0;
-    const c = PP.num(pv("cohAmt").value), t = grand();
-    return s === "split" && t > 0 && Number.isFinite(c) && c > 0 && c < t ? c / t * 100 : null;
-  };
   function update() {
     prowEls().forEach(r => {
       const s = rowState(r); r.classList.toggle("on", s.on);
       q$(r, ".p-amt").textContent = s.on && s.qty > 0 && s.price >= 0 ? money(s.qty * s.price) : "–";
     });
-    const sel = selected(), t = grand(), src = pv("source").value;
-    $("#bpSplit").hidden = src !== "split";
-    if (src === "split") { const c = PP.num(pv("cohAmt").value); if (Number.isFinite(c) && t > 0) pv("bankAmt").value = r2(t - c); }
+    const sel = selected(), t = grand();
+    PP.payUI(bpf, t); PP.payBalance(bpf, "total", t);
     let msg = sel.length ? `${sel.length} ${sel.length === 1 ? "item" : "items"} · Grand total ${money(t)}` : "";
-    const c = share();
-    if (sel.length && c != null) {
-      const fromCoh = t * c / 100, fromBank = t - fromCoh, F = PP.funds();
-      msg += ` (COH ${money(fromCoh)} · BANK ${money(fromBank)})`;
-      if (F.set) { const low = [fromCoh > F.coh + 0.005 ? `COH (available ${money(F.coh)})` : "", fromBank > F.bank + 0.005 ? `BANK (available ${money(F.bank)})` : ""].filter(Boolean); if (low.length) msg += `. Not enough ${low.join(" and ")}.`; }
-    }
+    const pay = PP.readPay(bpf, t);
+    if (sel.length && pay.ok) msg += PP.payText(pay, t);
     $("#bpTotal").textContent = msg;
     $("#bpSave").textContent = sel.length ? `Record ${sel.length} ${sel.length === 1 ? "purchase" : "purchases"}` : "Record purchases";
   }
@@ -254,10 +243,7 @@
   });
   $("#bpFilter").addEventListener("input", () => { const q = norm($("#bpFilter").value); prowEls().forEach(r => { r.hidden = !!q && !norm(pItems.find(x => x.id === r.dataset.id).name).includes(q); }); });
   bpf.addEventListener("input", (e) => {
-    if (e.target.name === "cohAmt" || e.target.name === "bankAmt") {       // COH + BANK always add up to the receipt total
-      const t = grand(), v = PP.num(e.target.value);
-      if (t > 0 && Number.isFinite(v)) pv(e.target.name === "cohAmt" ? "bankAmt" : "cohAmt").value = r2(t - v);
-    }
+    PP.payBalance(bpf, e.target.name, grand());       // COH + BANK + other person always add up to the receipt total
     update();
   });
   PP.clearOnInput(bpf);
@@ -265,10 +251,9 @@
   guardClose(bp, $("#bpCancel"), () => selected().length > 0 || prowEls().some(r => q$(r, ".p-price").value.trim()));
   bpf.addEventListener("submit", (e) => {
     e.preventDefault();
-    const supplier = pv("supplier").value.trim(), date = pv("date").value, src = pv("source").value, sel = selected(), t = grand();
+    const supplier = pv("supplier").value.trim(), date = pv("date").value, sel = selected(), t = grand(), pay = PP.readPay(bpf, t);
     const okHead = PP.checks(bpf, [["supplier", !!supplier, "Who did you buy from?"], ["date", !!date, "Pick the date you bought them."],
-      ["source", !!src, "Choose where the payment came from: COH, BANK or both."],
-      ...(src === "split" ? [["cohAmt", share() != null, `Type how much is from COH and how much from BANK. Both must be more than 0 and add up to ${money(t)}.`]] : [])]);
+      [pay.field || "source", pay.ok, pay.msg]]);
     list.querySelectorAll(".bad").forEach(x => x.classList.remove("bad"));
     const errs = []; let firstBad = null;
     if (!sel.length) errs.push("Tick the items you bought, or type their prices.");
@@ -279,9 +264,9 @@
     $("#bpError").textContent = errs.slice(0, 3).join(" ") + (errs.length > 3 ? ` (+${errs.length - 3} more)` : "");
     if (!okHead || errs.length) { if (okHead && firstBad) firstBad.focus(); return; }
 
-    const coh = share(), at = new Date().toISOString(), ref = pv("ref").value.trim(); let moved = 0;
+    const at = new Date().toISOString(), ref = pv("ref").value.trim(); let moved = 0;
     const changed = sel.map(s => {
-      const line = { id: PP.uid(), supplier, qty: s.qty, price: s.price, date, ref, coh, at };
+      const line = { id: PP.uid(), supplier, qty: s.qty, price: s.price, date, ref, coh: pay.coh, oth: pay.oth, othBy: pay.othBy, at };
       let item = { ...s.item, purchases: [...PP.lines(s.item), line] };
       if (PP.autoDone(item)) { item = { ...item, status: "bought" }; moved++; }
       return item;
@@ -299,7 +284,6 @@
   const mrows = () => [...mgrid.querySelectorAll(".mrow")];
   const mc = (r, c) => r.querySelector(`[data-mc="${c}"]`);                       // 0 supplier, 1 qty, 2 price, 3 receipt no.
   const mUsed = (r) => [0, 1, 2, 3].some(c => mc(r, c).value.trim());
-  const mShare = () => { const s = mv("source").value; return s === "coh" ? 100 : s === "bank" ? 0 : null; };
   function mAdd() {
     const r = document.createElement("div"); r.className = "mrow";
     r.innerHTML = `<span class="bn"></span>
@@ -321,11 +305,9 @@
     });
     const rem = PP.remaining(mItem), left = Math.round((rem - qty) * 1000) / 1000, u = mItem.unit;
     let msg = n ? `${n} ${n === 1 ? "purchase" : "purchases"} · ${fq(qty)} ${u} · Grand total ${money(total)} · ` + (left > 0 ? `${fq(left)} ${u} still to go` : left < 0 ? `${fq(-left)} ${u} more than needed` : "Everything needed is covered") : "";
-    const c = mShare();
-    if (n && c != null && total > 0) {
-      const fromCoh = total * c / 100, fromBank = total - fromCoh, F = PP.funds();
-      if (F.set) { const low = [fromCoh > F.coh + 0.005 ? `COH (available ${money(F.coh)})` : "", fromBank > F.bank + 0.005 ? `BANK (available ${money(F.bank)})` : ""].filter(Boolean); if (low.length) msg += `. Not enough ${low.join(" and ")}.`; }
-    }
+    PP.payUI(mbf, total);
+    const pay = PP.readPay(mbf, total);
+    if (n && pay.ok && total > 0) msg += PP.payText(pay, total);
     $("#mbTotal").textContent = msg;
     $("#mbSave").textContent = n ? `Save ${n} ${n === 1 ? "purchase" : "purchases"}` : "Save purchases";
   }
@@ -337,7 +319,7 @@
     mUpdate(); mb.showModal(); mc(mrows()[0], 0).focus();
   };
   mgrid.addEventListener("input", (e) => { e.target.classList.remove("bad"); mUpdate(); });
-  mbf.addEventListener("input", (e) => { if (e.target.name === "source") mUpdate(); });
+  mbf.addEventListener("input", (e) => { if (e.target.name === "source" || e.target.name === "othBy") mUpdate(); });
   PP.clearOnInput(mbf);
   mgrid.addEventListener("click", (e) => { const b = e.target.closest("[data-del]"); if (!b) return; b.closest(".mrow").remove(); if (!mrows().length) mAdd(); mUpdate(); });
   mgrid.addEventListener("keydown", (e) => {        // Enter = same column, next row (new row at the end)
@@ -364,8 +346,9 @@
   guardClose(mb, $("#mbCancel"), () => mrows().some(mUsed));
   mbf.addEventListener("submit", (e) => {
     e.preventDefault();
-    const date = mv("date").value, src = mv("source").value, rows = mrows().filter(mUsed), errs = []; let firstBad = null;
-    const okHead = PP.checks(mbf, [["date", !!date, "Pick the date you bought them."], ["source", !!src, "Choose where the payment came from: COH or BANK."]]);
+    const date = mv("date").value, rows = mrows().filter(mUsed), errs = []; let firstBad = null;
+    const pay = PP.readPay(mbf, 0);
+    const okHead = PP.checks(mbf, [["date", !!date, "Pick the date you bought them."], [pay.field || "source", pay.ok, pay.msg]]);
     mgrid.querySelectorAll(".bad").forEach(x => x.classList.remove("bad"));
     const bad = (el, msg) => { el.classList.add("bad"); errs.push(msg); firstBad = firstBad || el; };
     if (!rows.length) errs.push("Add at least one supplier, with quantity and price.");
@@ -374,7 +357,7 @@
       if (!supplier) bad(mc(r, 0), `Row ${n}: who did you buy from?`);
       if (!(qty > 0)) bad(mc(r, 1), `Row ${n}: type how many you bought.`);
       if (!(Number.isFinite(price) && price >= 0)) bad(mc(r, 2), `Row ${n}: type the price each.`);
-      return { id: PP.uid(), supplier, qty, price, date, ref: mc(r, 3).value.trim(), coh: mShare(), at: new Date().toISOString() };
+      return { id: PP.uid(), supplier, qty, price, date, ref: mc(r, 3).value.trim(), coh: pay.coh, oth: pay.oth, othBy: pay.othBy, at: new Date().toISOString() };
     });
     $("#mbError").textContent = errs.slice(0, 3).join(" ") + (errs.length > 3 ? ` (+${errs.length - 3} more)` : "");
     if (!okHead || errs.length) { if (okHead && firstBad) firstBad.focus(); return; }

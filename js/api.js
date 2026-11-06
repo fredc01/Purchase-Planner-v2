@@ -21,8 +21,14 @@ function normItem(r) {
     id: String(r.id), name: String(r.name || ""), category: r.category || "Other", project: r.project || "", unit: r.unit || "pcs",
     qty: n(r.qty) || 1, est: n(r.est), priority: ["high", "medium", "low"].includes(r.priority) ? r.priority : "medium",
     needed: r.needed || "", notes: r.notes || "", status: r.status === "bought" ? "bought" : "todo", created: r.created || "",
-    purchases: list.map(l => ({ id: String(l.id || Math.random().toString(36).slice(2)), supplier: l.supplier || "", qty: n(l.qty), price: n(l.price), date: l.date || "", ref: l.ref || "",
-      coh: (l.coh === undefined || l.coh === null || l.coh === "") ? null : Math.min(100, Math.max(0, n(l.coh))), at: l.at || "" }))
+    // Paid from: coh = % from cash on hand, oth = % paid by another person (othBy = who), the rest is BANK.
+    // Purchases saved before "paid by other person" existed have no oth / othBy, so they load as oth 0 and keep working as before.
+    purchases: list.map(l => {
+      const coh = (l.coh === undefined || l.coh === null || l.coh === "") ? null : Math.min(100, Math.max(0, n(l.coh)));
+      const oth = coh == null ? 0 : Math.min(100 - coh, Math.max(0, n(l.oth)));
+      return { id: String(l.id || Math.random().toString(36).slice(2)), supplier: l.supplier || "", qty: n(l.qty), price: n(l.price), date: l.date || "", ref: l.ref || "",
+        coh, oth, othBy: oth > 0 ? String(l.othBy || "").trim() : "", at: l.at || "" };
+    })
   };
 }
 

@@ -39,7 +39,7 @@
   function lineRow(i, l) {
     return `<li data-line="${esc(l.id)}">
       <div class="ln-main"><b>${esc(l.supplier || "No supplier")}</b><span>${fq(l.qty)} ${esc(i.unit)} × ${money(l.price)}</span>
-        ${l.coh == null ? `<span class="pay none">Paid from: not set</span>` : `<span class="pay ${PP.payClass(l)}" title="COH ${money(PP.lineCoh(l))} · BANK ${money(PP.lineBank(l))}">${PP.payLabel(l)}</span>`}</div>
+        ${l.coh == null ? `<span class="pay none">Paid from: not set</span>` : `<span class="pay ${PP.payClass(l)}" title="${esc(PP.payDetail(l))}">${esc(PP.payLabel(l))}</span>`}</div>
       <div class="ln-amt"><b>${money(PP.lineAmt(l))}</b><small>${l.date ? fmtDate(l.date) : ""}${l.ref ? ` · ${esc(l.ref)}` : ""}</small></div>
       <div class="ln-act">
         <button class="icon-btn sm" data-act="editbuy" data-line="${esc(l.id)}" type="button" aria-label="Edit purchase from ${esc(l.supplier || "supplier")}"><svg class="ti" aria-hidden="true"><use href="#ti-pencil"/></svg></button>
@@ -73,7 +73,7 @@
         <div class="buy-btns"><button class="btn small ${lines.length ? "" : "primary"}" data-act="addbuy" type="button">+ Add purchase</button>
           <button class="btn small" data-act="addmany" type="button" title="Add the same item from several suppliers at once">+ Add many</button></div>
         ${paid > 0 ? `<p class="paid-total">${bought ? "Total paid" : "Paid so far"} <b>${money(paid)}</b></p>
-          <p class="paid-split">COH ${money(lines.reduce((s, l) => s + PP.lineCoh(l), 0))} · BANK ${money(lines.reduce((s, l) => s + PP.lineBank(l), 0))}</p>` : ""}
+          <p class="paid-split">COH ${money(lines.reduce((s, l) => s + PP.lineCoh(l), 0))} · BANK ${money(lines.reduce((s, l) => s + PP.lineBank(l), 0))}${lines.some(l => PP.lineOth(l) > 0.004) ? ` · OTHERS ${money(lines.reduce((s, l) => s + PP.lineOth(l), 0))}` : ""}</p>` : ""}
         ${paid > 0 && i.est > 0 && Math.abs(diff) > 0.001 ? `<p class="delta ${diff > 0 ? "save" : "over"}">${diff > 0 ? `Saved ${money(diff)} vs budget` : `Over budget by ${money(-diff)}`}${bought ? "" : " so far"}</p>` : ""}
       </section>`;
 
@@ -102,6 +102,7 @@
     const uniq = (fn) => [...new Set(PP.state.items.flatMap(fn).filter(Boolean))].sort().map(s => `<option value="${esc(s)}">`).join("");
     $("#supplierList").innerHTML = uniq(i => PP.lines(i).map(l => l.supplier));
     $("#projectList").innerHTML = uniq(i => [i.project]);
+    $("#payerList").innerHTML = uniq(i => PP.lines(i).map(l => l.othBy));
   }
 
   // Remaining COH and BANK balance, always visible at the top of the board
@@ -170,28 +171,18 @@
   /* ---------- Add / edit one purchase ---------- */
   const bd = $("#buyDialog"), bf = $("#buyForm"), bv = (n) => PP.field(bf, n); let buying = null;     // { item, line|null }
   PP.clearOnInput(bf);
-  // how much of this purchase comes from COH (0-100), or null while nothing valid is chosen yet
-  const cohShare = () => {
-    const s = bv("source").value; if (s === "coh") return 100; if (s === "bank") return 0;
-    const c = PP.num(bv("cohAmt").value), t = PP.num(bv("qty").value) * PP.num(bv("price").value);   // split: typed COH amount out of the total
-    return s === "split" && t > 0 && Number.isFinite(c) && c > 0 && c < t ? c / t * 100 : null;
-  };
+  const buyAmt = () => PP.num(bv("qty").value) * PP.num(bv("price").value);
   const showTotal = () => {
-    const q = PP.num(bv("qty").value), p = PP.num(bv("price").value), s = bv("source").value, out = $("#buyTotal");
-    $("#splitRow").hidden = s !== "split";
+    const q = PP.num(bv("qty").value), p = PP.num(bv("price").value), out = $("#buyTotal"), amt = q * p;
+    PP.payUI(bf, amt);
     if (!(q > 0 && p >= 0)) { out.textContent = ""; return; }
-    const amt = q * p, c = cohShare(); let t = `Total for this purchase: ${money(amt)}`;
-    if (c != null) {
-      const fromCoh = amt * c / 100, fromBank = amt - fromCoh, F = PP.funds(buying && buying.line ? buying.line.id : null);
-      t += ` (COH ${money(fromCoh)} · BANK ${money(fromBank)})`;
-      if (F.set) { const low = [fromCoh > F.coh + 0.005 ? `COH (available ${money(F.coh)})` : "", fromBank > F.bank + 0.005 ? `BANK (available ${money(F.bank)})` : ""].filter(Boolean); if (low.length) t += `. Not enough ${low.join(" and ")}.`; }
-    }
+    let t = `Total for this purchase: ${money(amt)}`; const pay = PP.readPay(bf, amt);
+    if (pay.ok) t += PP.payText(pay, amt, buying && buying.line ? buying.line.id : null);
     out.textContent = t;
   };
-  bf.addEventListener("input", (e) => {   // COH amount + BANK amount always add up to the total of this purchase
-    const n = e.target.name, v = PP.num(e.target.value), t = PP.num(bv("qty").value) * PP.num(bv("price").value), r2 = (x) => Math.round(x * 100) / 100;
-    if (t > 0 && Number.isFinite(v) && (n === "cohAmt" || n === "bankAmt")) bv(n === "cohAmt" ? "bankAmt" : "cohAmt").value = r2(t - v);
-    else if (t > 0 && (n === "qty" || n === "price") && bv("source").value === "split" && Number.isFinite(PP.num(bv("cohAmt").value))) bv("bankAmt").value = r2(t - PP.num(bv("cohAmt").value));
+  bf.addEventListener("input", (e) => {   // COH + BANK + other person always add up to the total of this purchase
+    const n = e.target.name;
+    PP.payBalance(bf, n === "qty" || n === "price" ? "total" : n, buyAmt());
     showTotal();
   });
   function openBuy(item, line) {
@@ -201,21 +192,18 @@
     $("#buyName").textContent = `${item.name} · need ${fq(item.qty)} ${item.unit}` + (rem > 0 ? `, ${fq(rem)} still to buy` : ", all bought already");
     bv("supplier").value = line ? line.supplier : ""; bv("qty").value = line ? line.qty : (rem > 0 ? rem : "");
     bv("price").value = line ? line.price : (item.est || ""); bv("date").value = line ? line.date : today(); bv("ref").value = line ? line.ref : "";
-    const c = line ? line.coh : null;
-    bv("source").value = c == null ? "" : c >= 100 ? "coh" : c <= 0 ? "bank" : "split";
-    const sp = c != null && c > 0 && c < 100, r2 = (x) => Math.round(x * 100) / 100;
-    bv("cohAmt").value = sp ? r2(PP.lineCoh(line)) : ""; bv("bankAmt").value = sp ? r2(PP.lineBank(line)) : "";
+    PP.fillPay(bf, line);
     showTotal(); bd.showModal();
   }
   bf.addEventListener("submit", (e) => {
     e.preventDefault();
     const supplier = bv("supplier").value.trim(), qty = PP.num(bv("qty").value), price = PP.num(bv("price").value), date = bv("date").value;
+    const pay = PP.readPay(bf, qty * price);
     if (!PP.checks(bf, [["supplier", !!supplier, "Who did you buy from?"], ["qty", Number.isFinite(qty) && qty > 0, "Type how many you bought (more than 0)."],
       ["price", Number.isFinite(price) && price >= 0, "How much did you pay (each)?"], ["date", !!date, "Pick the date you bought it."],
-      ["source", !!bv("source").value, "Choose where the payment came from: COH, BANK or both."],
-      ...(bv("source").value === "split" ? [["cohAmt", cohShare() != null, `Type how much is from COH and how much from BANK. Both must be more than 0 and add up to ${money(qty * price)}.`]] : [])])) return;
+      [pay.field || "source", pay.ok, pay.msg]])) return;
     const { item: base, line: old } = buying;
-    const line = { id: old ? old.id : PP.uid(), supplier, qty, price, date, ref: bv("ref").value.trim(), coh: cohShare(), at: old ? old.at : new Date().toISOString() };
+    const line = { id: old ? old.id : PP.uid(), supplier, qty, price, date, ref: bv("ref").value.trim(), coh: pay.coh, oth: pay.oth, othBy: pay.othBy, at: old ? old.at : new Date().toISOString() };
     let item = { ...base, purchases: old ? PP.lines(base).map(l => l.id === old.id ? line : l) : [...PP.lines(base), line] };
     const moved = autoDone(item); if (moved) item = { ...item, status: "bought" };
     replace(item); bd.close(); PP.render();
