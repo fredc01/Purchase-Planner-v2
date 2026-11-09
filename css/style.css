@@ -252,3 +252,8 @@ details.quick textarea { width: 100%; resize: vertical; }
 .hist li { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem; padding: .35rem .5rem; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
 .hist li small { color: var(--muted); flex: 1 1 8rem; } .hist li .icon-btn { margin-left: auto; }
 .hist .pay { margin-top: 0; }
+
+/* purchase request dialog */
+.pr-details { margin: .2rem 0 .6rem; } .pr-details summary { cursor: pointer; color: var(--muted); font-weight: 600; margin-bottom: .4rem; }
+.pr-pick { display: flex; align-items: center; gap: .75rem; margin: .2rem 0 .5rem; } .pr-pick input[type=search] { flex: 1; }
+.pr-all { display: inline-flex; align-items: center; gap: .4rem; white-space: nowrap; font-weight: 600; } .pr-all input { width: auto; margin: 0; }

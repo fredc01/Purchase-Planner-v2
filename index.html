@@ -55,6 +55,7 @@
         <button class="btn refresh-btn" type="button" data-refresh title="Reload the latest data"><span class="ri" aria-hidden="true"><svg class="ti" aria-hidden="true"><use href="#ti-refresh"/></svg></span><span class="rt">Refresh</span></button>
         <button class="btn primary" id="addBtn" type="button"><svg class="ti" aria-hidden="true"><use href="#ti-plus"/></svg> Add item to purchase</button>
         <button class="btn bulk" id="bulkItemsBtn" type="button" title="Add many items at once. You can paste rows from Excel."><svg class="ti" aria-hidden="true"><use href="#ti-plus"/></svg> Add many items</button>
+        <button class="btn bulk" id="prBtn" type="button" title="Make the PURCHASE REQUEST Excel form for the items you want to buy"><svg class="ti" aria-hidden="true"><use href="#ti-file-text"/></svg> Purchase request</button>
         <button class="btn bulk" id="bulkBuyBtn" type="button" title="Record one supplier's purchases for many items at once"><svg class="ti" aria-hidden="true"><use href="#ti-receipt"/></svg> Record purchases</button>
       </div>
       <div class="pane-switch" id="paneSwitch" role="group" aria-label="Show">
@@ -244,6 +245,49 @@
     </form>
   </dialog>
 
+  <!-- Purchase request (Excel form) -->
+  <dialog id="prDialog" class="wide" data-sticky aria-labelledby="prTitle">
+    <form id="prForm" method="dialog" novalidate>
+      <h3 id="prTitle">Purchase request</h3>
+      <p class="hint">Tick the items you want to buy, check the details, then download the <b>PURCHASE REQUEST</b> Excel form, ready to print and sign. Choose a project to tick all of its items. The price each starts from the budget price; type the canvass price if it is different.</p>
+      <div class="row2">
+        <label>Project<input name="project" list="projectList" maxlength="60" placeholder="Choose or type the project" autocomplete="off"></label>
+        <label>Proj. location<input name="location" maxlength="80" placeholder="e.g. Biñan, Laguna" autocomplete="off"></label>
+      </div>
+      <div class="row2">
+        <label>Supplier<input name="supplier" list="supplierList" maxlength="60" placeholder="Leave empty if not decided (shows -)" autocomplete="off"></label>
+        <label>Mode of payment<input name="mode" list="payModeList" maxlength="40" placeholder="CASH, BANK TRANSFER…" autocomplete="off"></label>
+      </div>
+      <div class="row2">
+        <label>Payment details <small>(optional)</small><input name="details" maxlength="80" placeholder="Bank account or GCash number" autocomplete="off"></label>
+        <label>Date<input name="date" type="date"></label>
+      </div>
+      <div class="row2">
+        <label>Request by<input name="requestBy" maxlength="40" placeholder="Who needs these items?" autocomplete="off"></label>
+        <label>Prepared by<input name="preparedBy" maxlength="40" autocomplete="off"></label>
+      </div>
+      <details class="pr-details"><summary>Address and approver on the form</summary>
+        <div class="row3">
+          <label>Company address<input name="address" maxlength="90" autocomplete="off"></label>
+          <label>Approved by<input name="approvedName" maxlength="40" autocomplete="off"></label>
+          <label>Approver title<input name="approvedTitle" maxlength="40" autocomplete="off"></label>
+        </div>
+      </details>
+      <datalist id="payModeList"><option value="CASH"><option value="BANK TRANSFER"><option value="CHEQUE"><option value="GCASH"><option value="INSTA PAY"><option value="CASH ON DELIVERY"></datalist>
+      <div class="pr-pick"><label class="pr-all"><input type="checkbox" id="prAll"> Tick all shown</label><input id="prFilter" type="search" placeholder="Filter the items below…" aria-label="Filter items"></div>
+      <div class="bscroll">
+        <div class="phead"><span></span><span>Item</span><span>Qty to buy</span><span>Price each</span><span class="r">Amount</span></div>
+        <div class="bgrid" id="prList"></div>
+      </div>
+      <p class="grand" id="prTotal"></p>
+      <p class="form-error" id="prError" role="alert"></p>
+      <div class="dialog-actions">
+        <button class="btn" type="button" id="prCancel">Close</button>
+        <button class="btn good" type="submit" id="prSave"><svg class="ti" aria-hidden="true"><use href="#ti-download"/></svg> Download request</button>
+      </div>
+    </form>
+  </dialog>
+
   <!-- Add COH / BANK balance -->
   <dialog id="fundDialog" aria-labelledby="fdTitle">
     <form id="fundForm" method="dialog" novalidate>
@@ -297,6 +341,9 @@
   <script src="js/board.js"></script>
   <script src="js/bulk.js"></script>
   <script src="js/insights.js"></script>
+  <script src="js/request-logo.js"></script>
+  <script src="js/request-xlsx.js"></script>
+  <script src="js/request.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>
