@@ -87,32 +87,40 @@
   }
 
   /* ---------- Budget ---------- */
+  // The COH and BANK balances are locked: the only way to change them is "+ Add COH / BANK balance", which is kept in a history.
+  // The monthly budget is worked out for you: total balance minus what you spent from your own COH / BANK in earlier months.
+  // Money paid by another person is never taken out of COH, BANK or the monthly budget. It is only recorded (see Reports).
+  const topups = () => PP.state.settings.topups || (PP.state.settings.topups = []);
   function renderBudget() {
-    const S = PP.state.settings, month = today().slice(0, 7), thisMonth = allLines().filter(r => r.l.date.slice(0, 7) === month), spent = sumA(thisMonth);
+    const S = PP.state.settings, month = today().slice(0, 7), every = allLines(), thisMonth = every.filter(r => r.l.date.slice(0, 7) === month);
+    const own = (rows) => rows.reduce((s, r) => s + PP.lineOwn(r.l), 0), spent = own(thisMonth), before = own(every.filter(r => r.l.date.slice(0, 7) < month));
     const d = new Date(), left = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate() - d.getDate() + 1;
     const planned = PP.state.items.filter(i => i.status === "todo").reduce((s, i) => s + PP.remaining(i) * (Number(i.est) || 0), 0);
-    const b = S.budget || 0, remain = b - spent, pct = b ? spent / b * 100 : 0;
+    const F = PP.funds(), b = F.set ? Math.max(0, F.balCoh + F.balBank - before) : 0, remain = b - spent, pct = b ? spent / b * 100 : 0;
     const byCat = group(thisMonth, r => r.i.category);
-    const F = PP.funds(), r2 = (n) => Math.round(n * 100) / 100, fund = (cls, label, v, left) =>
-      `<div class="fund ${cls}"><span>${label}</span><strong>${F.set ? money(v) : "–"}</strong><small>${F.set ? `Remaining after purchases: <b class="${left < 0 ? "bad-t" : ""}">${money(left)}</b>` : "Not set yet"}</small></div>`;
+    const fund = (cls, label, v, rest) =>
+      `<div class="fund ${cls}"><span>${label}</span><strong>${F.set ? money(v) : "–"}</strong><small>${F.set ? `Spent: ${money(v - rest)}<br>Remaining after purchases: <b class="${rest < 0 ? "bad-t" : ""}">${money(rest)}</b>` : "Not set yet"}</small></div>`;
+    const hist = [...topups()].sort((x, y) => (y.date || "").localeCompare(x.date || "") || (y.at || "").localeCompare(x.at || ""));
+    const start = (k) => (Number(S[k]) || 0) - topups().filter(t => t.type === k).reduce((s, t) => s + t.amount, 0);
     $("#budgetRoot").innerHTML = `
       <section class="panel big">
         <h3>Cash &amp; bank</h3>
         <div class="funds">${fund("coh", "COH Balance", F.balCoh, F.coh)}${fund("bank", "BANK Balance", F.balBank, F.bank)}${fund("all", "Total balance", F.balCoh + F.balBank, F.coh + F.bank)}</div>
-        <form id="fundsForm" class="inline wrap" novalidate>
-          <label>COH Balance<input name="coh" type="number" step="0.01" inputmode="decimal" value="${F.set ? r2(F.balCoh) : ""}" placeholder="Available cash on hand"></label>
-          <label>BANK Balance<input name="bank" type="number" step="0.01" inputmode="decimal" value="${F.set ? r2(F.balBank) : ""}" placeholder="Available bank balance"></label>
-          <button class="btn primary" type="submit">Save balances</button></form>
-        <p class="hint">Type the cash on hand and the bank balance you have available. The Board shows what is remaining: these balances minus every card in Purchased, taken from COH, BANK or both as chosen on each purchase. Money paid by another person does not take anything out of COH or BANK.</p>
+        <div class="fund-btns"><button class="btn good" type="button" data-addfund="coh">+ Add COH balance</button><button class="btn good" type="button" data-addfund="bank">+ Add BANK balance</button></div>
+        <p class="hint">The balances are locked. To put money in, press <b>+ Add COH balance</b> or <b>+ Add BANK balance</b>. The Board shows what is remaining: the balance minus every card in Purchased, taken from COH, BANK or both as chosen on each purchase. Money paid by another person is not taken out of COH or BANK; it is only recorded for Reports.${F.oth > 0.004 ? ` Paid by other people so far: <b>${money(F.oth)}</b>.` : ""}</p>
+        ${F.set ? `<details class="fund-hist"><summary>Balance history (${hist.length} ${hist.length === 1 ? "addition" : "additions"})</summary>
+          <ul class="hist">${hist.map(t => `<li><span class="pay ${t.type}">${t.type === "coh" ? "COH" : "BANK"}</span><b>+${money(t.amount)}</b><small>${t.date ? PP.fmtDate(t.date) : ""}${t.note ? ` · ${esc(t.note)}` : ""}</small>
+            <button class="icon-btn sm" type="button" data-delfund="${esc(t.id)}" aria-label="Remove this addition"><svg class="ti" aria-hidden="true"><use href="#ti-x"/></svg></button></li>`).join("")}
+            <li class="start"><span class="pay none">Start</span><b>COH ${money(start("coh"))} · BANK ${money(start("bank"))}</b><small>balance before the additions above</small></li></ul></details>` : ""}
       </section>
       <section class="panel big">
-        <h3>Monthly budget</h3>
-        <form id="budgetForm" class="inline" novalidate><label>Budget for this month<input name="budget" type="number" min="0" step="0.01" inputmode="decimal" value="${b || ""}" placeholder="e.g. 600000"></label><button class="btn primary" type="submit">Save</button></form>
+        <h3>Monthly budget <small>(worked out automatically)</small></h3>
         ${b ? `<div class="meter ${pct > 100 ? "over" : pct > 85 ? "warn" : ""}"><i style="width:${Math.min(100, pct)}%"></i></div>
           <p class="meter-text"><b>${money(spent)}</b> spent of ${money(b)} · ${remain >= 0 ? `<b>${money(remain)}</b> left` : `<b class="bad-t">${money(-remain)} over</b>`}</p>
           <p class="hint">${remain > 0 ? `${left} ${left === 1 ? "day" : "days"} left this month, about ${money(remain / left)} a day.` : "You’ve used the whole budget for this month."}
-          ${planned > 0 ? ` What is still to purchase adds about ${money(planned)} at budget prices, which would bring the month to ${money(spent + planned)} (${Math.round((spent + planned) / b * 100)}%).` : ""}</p>`
-          : `<p class="hint">Set a monthly budget to see how much is left.</p>`}
+          ${planned > 0 ? ` What is still to purchase adds about ${money(planned)} at budget prices, which would bring the month to ${money(spent + planned)} (${Math.round((spent + planned) / b * 100)}%).` : ""}</p>
+          <p class="hint">Monthly budget = total balance (${money(F.balCoh + F.balBank)}) minus what you spent from COH and BANK in earlier months (${money(before)}). Purchases paid by another person are not counted.</p>`
+          : `<p class="hint">${F.set ? "There is nothing left in the balance for this month. Add COH or BANK balance above." : "Add your COH or BANK balance above to see the monthly budget."}</p>`}
       </section>
       <section class="panel big"><h3>Limits by category <small>(this month)</small></h3>
         <form id="limitForm" novalidate>
@@ -124,20 +132,41 @@
         </form></section>`;
   }
   $("#budgetRoot").addEventListener("input", (e) => { const w = e.target.closest("label"); if (w) PP.clearError(w); });
+
+  /* add COH / BANK balance */
+  const fd = $("#fundDialog"), ff = $("#fundForm"), fv = (n) => PP.field(ff, n); let fundType = "coh";
+  PP.clearOnInput(ff);
+  const fundNote = () => { const a = PP.num(fv("amount").value), F = PP.funds(), cur = fundType === "coh" ? F.balCoh : F.balBank; $("#fdTotal").textContent = a > 0 ? `${fundType === "coh" ? "COH" : "BANK"} balance will be ${money(cur)} + ${money(a)} = ${money(cur + a)}` : ""; };
+  ff.addEventListener("input", fundNote);
+  async function openFund(type) {
+    if (!(await PP.gate())) return;
+    fundType = type; ff.reset(); PP.clearAll(ff); fv("date").value = today();
+    $("#fdTitle").textContent = type === "coh" ? "Add COH balance" : "Add BANK balance";
+    $("#fdHint").textContent = `This is added to your current ${type === "coh" ? "cash on hand" : "bank balance"}. It is saved in the balance history.`;
+    fundNote(); fd.showModal(); fv("amount").focus();
+  }
+  ff.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const amount = PP.num(fv("amount").value), date = fv("date").value;
+    if (!PP.checks(ff, [["amount", Number.isFinite(amount) && amount > 0, "Type how much to add (more than 0)."], ["date", !!date, "Pick the date."]])) return;
+    if (Api.mode === "sheet") await PP.reload();            // start from the newest balance, in case it was changed on another device
+    const S = PP.state.settings, key = fundType, r2 = (n) => Math.round(n * 100) / 100;
+    S[key] = r2((Number(S[key]) || 0) + amount); S.balAt = S.balAt || new Date().toISOString();
+    topups().push({ id: PP.uid(), type: key, amount: r2(amount), date, note: fv("note").value.trim(), at: new Date().toISOString() });
+    fd.close(); PP.render(); PP.save(() => Api.saveSettings(S), `${key === "coh" ? "COH" : "BANK"} balance added`);
+  });
+  $("#budgetRoot").addEventListener("click", async (e) => {
+    const add = e.target.closest("[data-addfund]"); if (add) { openFund(add.dataset.addfund); return; }
+    const del = e.target.closest("[data-delfund]"); if (!del) return;
+    const t = topups().find(x => x.id === del.dataset.delfund); if (!t) return;
+    if (!(await PP.gate())) return;
+    if (!(await PP.askConfirm("Remove this addition?", `${t.type === "coh" ? "COH" : "BANK"} +${money(t.amount)}${t.date ? ` (${PP.fmtDate(t.date)})` : ""} will be taken off the balance again. Use this only to fix a mistake.`, "Remove", { cancel: "Keep it" }))) return;
+    const S = PP.state.settings; S[t.type] = Math.round(((Number(S[t.type]) || 0) - t.amount) * 100) / 100; S.topups = topups().filter(x => x.id !== t.id);
+    PP.render(); PP.save(() => Api.saveSettings(S), "Addition removed");
+  });
   $("#budgetRoot").addEventListener("submit", async (e) => {
     e.preventDefault();
-    if (e.target.id === "fundsForm") {
-      const ci = e.target.elements.namedItem("coh"), bi = e.target.elements.namedItem("bank"), c = ci.value === "" ? 0 : PP.num(ci.value), b = bi.value === "" ? 0 : PP.num(bi.value);
-      if (isNaN(c)) { PP.showError(ci.closest("label"), "Type an amount."); ci.focus(); return; }
-      if (isNaN(b)) { PP.showError(bi.closest("label"), "Type an amount."); bi.focus(); return; }
-      if (!(await PP.gate())) return;
-      Object.assign(PP.state.settings, { coh: c, bank: b, balAt: new Date().toISOString() }); renderBudget(); PP.save(() => Api.saveSettings(PP.state.settings), "Balances saved");
-    } else if (e.target.id === "budgetForm") {
-      const inp = e.target.elements.namedItem("budget"), v = inp.value === "" ? 0 : PP.num(inp.value);
-      if (isNaN(v) || v < 0) { PP.showError(inp.closest("label"), "Type an amount of 0 or more."); inp.focus(); return; }
-      if (!(await PP.gate())) return;
-      PP.state.settings.budget = v; renderBudget(); PP.save(() => Api.saveSettings(PP.state.settings), "Budget saved");
-    } else if (e.target.id === "limitForm") {
+    if (e.target.id === "limitForm") {
       const inputs = [...e.target.querySelectorAll("input[data-cat]")]; let bad = null;
       inputs.forEach(inp => { const v = inp.value === "" ? 0 : PP.num(inp.value); if (isNaN(v) || v < 0) { PP.showError(inp.closest("label"), "Type 0 or more."); bad = bad || inp; } });
       if (bad) { bad.focus(); return; }

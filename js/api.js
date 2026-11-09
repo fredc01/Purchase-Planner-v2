@@ -32,6 +32,13 @@ function normItem(r) {
   };
 }
 
+// The history of balances added with "+ Add COH / BANK balance": [{ id, type: "coh" | "bank", amount, date, note, at }]. Older data has none.
+function parseTopups(v) {
+  let a = v; if (typeof a === "string") { try { a = JSON.parse(a || "[]"); } catch { a = []; } }
+  return (Array.isArray(a) ? a : []).filter(t => t && (t.type === "coh" || t.type === "bank") && Number(t.amount) > 0)
+    .map(t => ({ id: String(t.id || Math.random().toString(36).slice(2)), type: t.type, amount: Number(t.amount), date: t.date || "", note: t.note || "", at: t.at || "" }));
+}
+
 const LocalApi = (() => {
   const KEY = "purchasePlanner:v2";
   let st = null;
@@ -71,7 +78,7 @@ const LocalApi = (() => {
   const save = () => { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch { st = null; throw new Error("This device is out of storage space."); } };
   return {
     mode: "local", needsPass: false, hasPass: () => true, signIn: async () => {}, signOut: () => {},
-    async load() { const d = JSON.parse(JSON.stringify(get())); d.items = d.items.map(normItem); return d; },
+    async load() { const d = JSON.parse(JSON.stringify(get())); d.items = d.items.map(normItem); d.settings.topups = parseTopups(d.settings.topups); return d; },
     async saveItem(it) { const d = get(), i = d.items.findIndex(x => x.id === it.id); if (i >= 0) d.items[i] = it; else d.items.push(it); save(); },
     async saveItems(list) { const d = get(); list.forEach(it => { const i = d.items.findIndex(x => x.id === it.id); if (i >= 0) d.items[i] = it; else d.items.push(it); }); save(); },
     async deleteItem(id) { get().items = get().items.filter(x => x.id !== id); save(); },
@@ -108,6 +115,7 @@ const SheetApi = (() => {
       let cats = []; try { cats = JSON.parse(d.settings.categories || "[]"); } catch {}
       return {
         settings: { currency: d.settings.currency || "₱", budget: num(d.settings.budget), coh: num(d.settings.coh), bank: num(d.settings.bank), balAt: d.settings.balAt || "",
+          topups: parseTopups(d.settings.topups),
           categories: Array.isArray(cats) && cats.length ? cats : DEFAULT_CATEGORIES.map(c => ({ ...c })) },
         items: d.items.map(normItem)
       };
@@ -121,7 +129,7 @@ const SheetApi = (() => {
       catch (e) { if (!/unknown action/i.test(e.message || "")) throw e; for (const it of list) await call("saveItem", { item: pack(it) }); }
     },
     deleteItem: (id) => call("deleteItem", { id }),
-    saveSettings: (s) => call("saveSettings", { settings: { currency: s.currency, budget: s.budget, coh: s.coh || 0, bank: s.bank || 0, balAt: s.balAt || "", categories: JSON.stringify(s.categories) } })
+    saveSettings: (s) => call("saveSettings", { settings: { currency: s.currency, budget: s.budget, coh: s.coh || 0, bank: s.bank || 0, balAt: s.balAt || "", topups: JSON.stringify(s.topups || []), categories: JSON.stringify(s.categories) } })
   };
 })();
 

@@ -244,6 +244,24 @@
     </form>
   </dialog>
 
+  <!-- Add COH / BANK balance -->
+  <dialog id="fundDialog" aria-labelledby="fdTitle">
+    <form id="fundForm" method="dialog" novalidate>
+      <h3 id="fdTitle">Add COH balance</h3>
+      <p class="hint" id="fdHint"></p>
+      <div class="row2">
+        <label>Amount to add<input name="amount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="How much"></label>
+        <label>Date<input name="date" type="date"></label>
+      </div>
+      <label>Note<input name="note" maxlength="60" placeholder="Optional, e.g. from the owner" autocomplete="off"></label>
+      <p class="hint total-line" id="fdTotal"></p>
+      <div class="dialog-actions">
+        <button class="btn" type="button" data-close>Cancel</button>
+        <button class="btn good" type="submit">Add balance</button>
+      </div>
+    </form>
+  </dialog>
+
   <!-- Are you sure? -->
   <dialog id="confirmDialog" aria-labelledby="confirmTitle">
     <form method="dialog">

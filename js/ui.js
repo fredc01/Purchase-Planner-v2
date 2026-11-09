@@ -41,6 +41,7 @@ const PP = { state: null, tab: "board" };
   PP.lineCoh = (l) => PP.lineAmt(l) * PP.shares(l).coh / 100;
   PP.lineOth = (l) => PP.lineAmt(l) * PP.shares(l).oth / 100;
   PP.lineBank = (l) => PP.lineAmt(l) * PP.shares(l).bank / 100;
+  PP.lineOwn = (l) => PP.lineAmt(l) - PP.lineOth(l);   // what the purchase cost you (everything except what another person paid)
   PP.otherName = (l) => String(l.othBy || "").trim() || "Other person";
   PP.payKind = (l) => {          // "" (not chosen) | coh | bank | other | split
     if (l.coh == null) return "";
@@ -114,9 +115,9 @@ const PP = { state: null, tab: "board" };
   // Balance = what you typed in Budget. Remaining = balance minus every purchase line on cards that are in "Purchased" (any date).
   // excludeId: leave one purchase out (used while editing it).
   PP.funds = (excludeId) => {
-    const S = PP.state.settings, balCoh = Number(S.coh) || 0, balBank = Number(S.bank) || 0; let coh = balCoh, bank = balBank;
-    PP.state.items.filter(i => i.status === "bought").forEach(i => PP.lines(i).forEach(l => { if (l.id !== excludeId) { coh -= PP.lineCoh(l); bank -= PP.lineBank(l); } }));
-    return { coh, bank, balCoh, balBank, set: !!S.balAt };
+    const S = PP.state.settings, balCoh = Number(S.coh) || 0, balBank = Number(S.bank) || 0; let coh = balCoh, bank = balBank, oth = 0;
+    PP.state.items.filter(i => i.status === "bought").forEach(i => PP.lines(i).forEach(l => { if (l.id !== excludeId) { coh -= PP.lineCoh(l); bank -= PP.lineBank(l); oth += PP.lineOth(l); } }));
+    return { coh, bank, balCoh, balBank, oth, set: !!S.balAt };   // oth = paid by other people: shown for information, never taken out of COH or BANK
   };
 
   /* toast */
